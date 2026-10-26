@@ -16,3 +16,6 @@ __pycache__/
 # Generated data
 *.duckdb
 *.parquet
+
+# Private notes
+*_NOT_TO_COMMIT*
