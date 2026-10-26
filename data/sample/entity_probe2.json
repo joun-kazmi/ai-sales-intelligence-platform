@@ -1,0 +1,253 @@
+{
+ "sample_records": 91303,
+ "vanity_domains": 8884,
+ "infra_domains": 1678,
+ "recs_with_vanity_domain_pct": 9.206707337108309,
+ "recs_with_scan_hostname_option": 4678,
+ "scan_hostname_distinct_domains": 2029,
+ "recs_per_vanity_domain_pctiles": {
+  "0.5": 1,
+  "0.75": 1,
+  "0.9": 2,
+  "0.99": 10
+ },
+ "domains_seen_once": 7532,
+ "top_vanity_domains": [
+  [
+   "rima-tde.net",
+   56
+  ],
+  [
+   "hotmart.com",
+   49
+  ],
+  [
+   "wisc.edu",
+   47
+  ],
+  [
+   "virginm.net",
+   44
+  ],
+  [
+   "notexist.com",
+   43
+  ],
+  [
+   "stratoserver.net",
+   41
+  ],
+  [
+   "my-free.website",
+   40
+  ],
+  [
+   "infomaniak.ch",
+   39
+  ],
+  [
+   "sakura.ne.jp",
+   36
+  ],
+  [
+   "solveforce.com",
+   34
+  ],
+  [
+   "1e100.net",
+   32
+  ],
+  [
+   "incapsula.com",
+   31
+  ],
+  [
+   "ocn.ne.jp",
+   31
+  ],
+  [
+   "yandex.ru",
+   30
+  ],
+  [
+   "xserver.jp",
+   30
+  ]
+ ],
+ "top_infra_domains": [
+  [
+   "incapdns.net",
+   26408
+  ],
+  [
+   "googleusercontent.com",
+   19718
+  ],
+  [
+   "amazonaws.com",
+   2043
+  ],
+  [
+   "cloudfront.net",
+   1837
+  ],
+  [
+   "akamaitechnologies.com",
+   945
+  ],
+  [
+   "btcentralplus.com",
+   760
+  ],
+  [
+   "imperva.com",
+   625
+  ],
+  [
+   "flyio.net",
+   504
+  ],
+  [
+   "your-server.de",
+   427
+  ],
+  [
+   "scw.cloud",
+   332
+  ],
+  [
+   "linodeusercontent.com",
+   279
+  ],
+  [
+   "hwclouds-dns.com",
+   229
+  ],
+  [
+   "vultrusercontent.com",
+   224
+  ],
+  [
+   "t-ipconnect.de",
+   218
+  ],
+  [
+   "spectrum.com",
+   216
+  ]
+ ],
+ "domain_source_counts": {
+  "scan_hostname": 2017,
+  "ptr_named": 6711,
+  "cert_cn": 192,
+  "http_host": 28
+ },
+ "flag_pct_of_vanity_domains": {
+  "http_no_csp": 83.33,
+  "http_no_xfo": 78.1,
+  "https_no_hsts": 51.47,
+  "has_waf": 42.32,
+  "tag_cdn": 40.93,
+  "server_version_disclosed": 16.18,
+  "tls_deprecated": 8.33,
+  "cve_cvss_ge7": 7.61,
+  "cert_expired": 6.09,
+  "tag_eol_product": 4.72,
+  "x_powered_by": 4.57,
+  "cve_cvss_ge9": 4.06,
+  "cert_selfsigned": 2.47,
+  "tag_self_signed": 2.44,
+  "http_401": 1.33,
+  "exposed_remote_or_db_any": 1.18,
+  "exposed_ftp": 0.63,
+  "weak_sig_alg": 0.25,
+  "exposed_rdp": 0.24,
+  "exposed_mysql": 0.2,
+  "key_1024": 0.18,
+  "tag_honeypot": 0.12,
+  "tag_eol_os": 0.06,
+  "exposed_postgres": 0.05,
+  "exposed_smb": 0.03,
+  "exposed_winrm": 0.02,
+  "exposed_mssql": 0.02,
+  "exposed_elasticsearch": 0.01,
+  "exposed_oracle": 0.01,
+  "exposed_redis": 0.01,
+  "exposed_mongodb": 0.01
+ },
+ "flag_pct_of_records": {
+  "tag_cdn": 40.153,
+  "http_no_csp": 28.037,
+  "http_no_xfo": 25.791,
+  "has_waf": 10.677,
+  "server_version_disclosed": 5.56,
+  "https_no_hsts": 4.461,
+  "cve_cvss_ge7": 2.967,
+  "tag_eol_product": 1.731,
+  "tag_honeypot": 1.69,
+  "cve_cvss_ge9": 1.631,
+  "exposed_remote_or_db_any": 1.235,
+  "x_powered_by": 1.092,
+  "tls_deprecated": 0.97,
+  "cert_selfsigned": 0.959,
+  "tag_self_signed": 0.943,
+  "http_401": 0.82,
+  "cert_expired": 0.364,
+  "exposed_rdp": 0.307,
+  "exposed_ftp": 0.279,
+  "exposed_winrm": 0.249,
+  "exposed_couchdb": 0.193,
+  "weak_sig_alg": 0.128,
+  "exposed_mysql": 0.097,
+  "key_1024": 0.055,
+  "exposed_mssql": 0.049,
+  "exposed_postgres": 0.049,
+  "exposed_smb": 0.049,
+  "tag_eol_os": 0.038,
+  "exposed_elasticsearch": 0.034,
+  "exposed_mongodb": 0.034,
+  "exposed_oracle": 0.031,
+  "exposed_ldap": 0.031,
+  "exposed_telnet": 0.03,
+  "exposed_docker": 0.03,
+  "exposed_redis": 0.03,
+  "exposed_memcached": 0.027,
+  "exposed_vnc": 0.025
+ },
+ "vanity_domains_without_cdn_or_waf": 4849,
+ "flag_pct_of_vanity_nocdn": {
+  "tag_cdn": 0.0,
+  "https_no_hsts": 31.76,
+  "has_waf": 0.0,
+  "exposed_remote_or_db_any": 2.08,
+  "http_no_csp": 74.92,
+  "server_version_disclosed": 24.79,
+  "http_no_xfo": 69.58,
+  "exposed_ftp": 1.13,
+  "tls_deprecated": 7.03,
+  "http_401": 2.08,
+  "x_powered_by": 6.58,
+  "tag_eol_product": 8.31,
+  "cert_selfsigned": 4.29,
+  "tag_self_signed": 4.29,
+  "weak_sig_alg": 0.33,
+  "key_1024": 0.31,
+  "cert_expired": 5.88,
+  "cve_cvss_ge7": 13.32,
+  "exposed_mysql": 0.35,
+  "cve_cvss_ge9": 7.05,
+  "exposed_elasticsearch": 0.02,
+  "exposed_rdp": 0.41,
+  "exposed_smb": 0.04,
+  "tag_eol_os": 0.1,
+  "tag_honeypot": 0.23,
+  "exposed_postgres": 0.06,
+  "exposed_winrm": 0.04,
+  "exposed_oracle": 0.02,
+  "exposed_mssql": 0.04,
+  "exposed_redis": 0.02,
+  "exposed_mongodb": 0.02
+ },
+ "domains_with_>=2_of_core_signals_pct": 23.35,
+ "domains_with_>=3_of_core_signals_pct": 7.22
+}

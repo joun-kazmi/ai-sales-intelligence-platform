@@ -1,0 +1,551 @@
+{
+ "sample_records": 91303,
+ "distinct_ips": 81039,
+ "class_counts": {
+  "cloud_hosting_cdn": 69604,
+  "business_like(legal-form/inst)": 4725,
+  "other_unclassified": 7684,
+  "isp_telecom": 9284,
+  "none": 6
+ },
+ "signals_overall": {
+  "domains": 67559,
+  "hostnames": 67559,
+  "cert_CN": 6182,
+  "cert_subject_O": 1365,
+  "http_title": 15568,
+  "http_host_name": 4310,
+  "any_domain_signal": 68223,
+  "any_name_or_O_or_title": 73159,
+  "has_regdom": 67561,
+  "has_nonInfra_regdom": 43096,
+  "cloud_org_with_vanity_domain": 33553,
+  "cloud_org_recs": 69604,
+  "cn_and_domains_both": 5540,
+  "hostnames_all_iplike_rdns": 56599,
+  "bizorg_recs": 12409,
+  "bizorg_with_domain": 5484
+ },
+ "signals_by_org_class": {
+  "cloud_hosting_cdn": {
+   "domains": 57761,
+   "hostnames": 57761,
+   "cert_CN": 4496,
+   "cert_subject_O": 571,
+   "http_title": 9908,
+   "http_host_name": 3675,
+   "any_domain_signal": 57962,
+   "any_name_or_O_or_title": 60484
+  },
+  "business_like(legal-form/inst)": {
+   "domains": 2015,
+   "hostnames": 2015,
+   "cert_CN": 466,
+   "cert_subject_O": 180,
+   "http_title": 1403,
+   "http_host_name": 303,
+   "any_domain_signal": 2070,
+   "any_name_or_O_or_title": 2558
+  },
+  "other_unclassified": {
+   "domains": 3635,
+   "hostnames": 3635,
+   "cert_CN": 434,
+   "cert_subject_O": 146,
+   "http_title": 2204,
+   "http_host_name": 139,
+   "any_domain_signal": 3710,
+   "any_name_or_O_or_title": 4877
+  },
+  "isp_telecom": {
+   "domains": 4145,
+   "hostnames": 4145,
+   "cert_CN": 783,
+   "cert_subject_O": 468,
+   "http_title": 2051,
+   "http_host_name": 192,
+   "any_domain_signal": 4478,
+   "any_name_or_O_or_title": 5237
+  },
+  "none": {
+   "domains": 3,
+   "hostnames": 3,
+   "cert_CN": 3,
+   "cert_subject_O": 0,
+   "http_title": 2,
+   "http_host_name": 1,
+   "any_domain_signal": 3,
+   "any_name_or_O_or_title": 3
+  }
+ },
+ "distinct_regdomains_all": 10569,
+ "distinct_regdomains_nonInfra": 10374,
+ "recs_per_regdomain_pctiles": {
+  "0.5": 1,
+  "0.75": 1,
+  "0.9": 2,
+  "0.99": 21
+ },
+ "nonInfra_recs_per_regdomain_pctiles": {
+  "0.5": 1,
+  "0.75": 1,
+  "0.9": 2,
+  "0.99": 19
+ },
+ "nonInfra_domains_seen_once": 8394,
+ "nonInfra_top100_share_of_assoc": 0.6863821968150265,
+ "top_regdomains": [
+  [
+   "incapdns.net",
+   26408
+  ],
+  [
+   "googleusercontent.com",
+   19718
+  ],
+  [
+   "amazonaws.com",
+   2043
+  ],
+  [
+   "cloudfront.net",
+   1837
+  ],
+  [
+   "akamaitechnologies.com",
+   945
+  ],
+  [
+   "btcentralplus.com",
+   760
+  ],
+  [
+   "imperva.com",
+   625
+  ],
+  [
+   "flyio.net",
+   504
+  ],
+  [
+   "your-server.de",
+   427
+  ],
+  [
+   "scw.cloud",
+   332
+  ],
+  [
+   "linodeusercontent.com",
+   279
+  ],
+  [
+   "hwclouds-dns.com",
+   229
+  ],
+  [
+   "vultrusercontent.com",
+   224
+  ],
+  [
+   "t-ipconnect.de",
+   218
+  ],
+  [
+   "spectrum.com",
+   216
+  ],
+  [
+   "contaboserver.net",
+   194
+  ],
+  [
+   "hinet.net",
+   165
+  ],
+  [
+   "awsglobalaccelerator.com",
+   155
+  ],
+  [
+   "ovh.net",
+   154
+  ],
+  [
+   "cloudflare.net",
+   129
+  ],
+  [
+   "ringana.com",
+   119
+  ],
+  [
+   "secureserver.net",
+   117
+  ],
+  [
+   "nuro.jp",
+   108
+  ],
+  [
+   "pbiaas.com",
+   97
+  ],
+  [
+   "myvzw.com",
+   95
+  ]
+ ],
+ "top_cert_subject_O": [
+  [
+   "Google Inc",
+   167
+  ],
+  [
+   "Microsoft Corporation",
+   67
+  ],
+  [
+   "Proofpoint, Inc.",
+   42
+  ],
+  [
+   "HTTPS Management Certificate for SonicWALL (self-s",
+   34
+  ],
+  [
+   "Plesk",
+   32
+  ],
+  [
+   "Acme Co",
+   30
+  ],
+  [
+   "Incapsula",
+   22
+  ],
+  [
+   "Akamai Technologies, Inc.",
+   22
+  ],
+  [
+   "\u5929\u7ffc\u4e91\u79d1\u6280\u6709\u9650\u516c\u53f8",
+   20
+  ],
+  [
+   "Fortinet",
+   20
+  ],
+  [
+   "Huawei",
+   20
+  ],
+  [
+   "YANDEX LLC",
+   17
+  ],
+  [
+   "DrayTek Corp.",
+   15
+  ],
+  [
+   "CloudFlare, Inc.",
+   15
+  ],
+  [
+   "Salesforce, Inc.",
+   15
+  ],
+  [
+   "Synology Inc.",
+   14
+  ],
+  [
+   "Fortinet Ltd.",
+   12
+  ],
+  [
+   "BT-PANEL",
+   12
+  ],
+  [
+   "Alibaba (China) Technology Co., Ltd.",
+   10
+  ],
+  [
+   "SANGFOR",
+   10
+  ]
+ ],
+ "tld_top": [
+  [
+   "com",
+   32969
+  ],
+  [
+   "net",
+   31969
+  ],
+  [
+   "de",
+   1270
+  ],
+  [
+   "jp",
+   704
+  ],
+  [
+   "org",
+   487
+  ],
+  [
+   "cloud",
+   403
+  ],
+  [
+   "uk",
+   351
+  ],
+  [
+   "br",
+   325
+  ],
+  [
+   "it",
+   313
+  ],
+  [
+   "pl",
+   234
+  ],
+  [
+   "au",
+   221
+  ],
+  [
+   "fr",
+   219
+  ],
+  [
+   "nl",
+   205
+  ],
+  [
+   "eu",
+   195
+  ],
+  [
+   "ca",
+   173
+  ]
+ ],
+ "top_orgs_by_class": {
+  "cloud_hosting_cdn": [
+   [
+    "Incapsula Inc",
+    29112
+   ],
+   [
+    "Google LLC",
+    19817
+   ],
+   [
+    "Cloudflare, Inc.",
+    3507
+   ],
+   [
+    "Aliyun Computing Co., LTD",
+    2383
+   ],
+   [
+    "Amazon.com, Inc.",
+    2213
+   ],
+   [
+    "Amazon Technologies Inc.",
+    1606
+   ],
+   [
+    "Akamai Technologies, Inc.",
+    893
+   ],
+   [
+    "Aliyun Computing Co.LTD",
+    820
+   ],
+   [
+    "Hetzner Online GmbH",
+    572
+   ],
+   [
+    "Microsoft Corporation",
+    568
+   ],
+   [
+    "Alibaba Cloud LLC",
+    563
+   ],
+   [
+    "Incapsula Inc.",
+    499
+   ]
+  ],
+  "business_like(legal-form/inst)": [
+   [
+    "ACEVILLE PTE.LTD.",
+    478
+   ],
+   [
+    "Avago Technologies U.S. Inc.",
+    150
+   ],
+   [
+    "Bitly Inc",
+    115
+   ],
+   [
+    "Egnyte Inc.",
+    110
+   ],
+   [
+    "Aviation RE LLC",
+    99
+   ],
+   [
+    "Wal-Mart Stores, Inc.",
+    89
+   ],
+   [
+    "Proofpoint, Inc.",
+    64
+   ],
+   [
+    "Level 3 Parent, LLC",
+    63
+   ],
+   [
+    "A100 ROW GmbH",
+    57
+   ],
+   [
+    "Fiserv Solutions, LLC",
+    56
+   ],
+   [
+    "Equifax, Inc.",
+    56
+   ],
+   [
+    "Company 64d3451fr4nzDrTH",
+    41
+   ]
+  ],
+  "other_unclassified": [
+   [
+    "ACE",
+    825
+   ],
+   [
+    "IP pools",
+    514
+   ],
+   [
+    "Meteverse Limited.",
+    497
+   ],
+   [
+    "METEVERSE LIMITED",
+    349
+   ],
+   [
+    "Private Customer",
+    193
+   ],
+   [
+    "End User Organization",
+    175
+   ],
+   [
+    "BT-Central-Plus",
+    116
+   ],
+   [
+    "Free SAS",
+    90
+   ],
+   [
+    "So-net Service",
+    81
+   ],
+   [
+    "RCS & RDS Business",
+    76
+   ],
+   [
+    "LUOGELANG (FRANCE) LIMITED",
+    59
+   ],
+   [
+    "EE Limited",
+    57
+   ]
+  ],
+  "isp_telecom": [
+   [
+    "Korea Telecom",
+    1027
+   ],
+   [
+    "Internet Rimon",
+    906
+   ],
+   [
+    "Deutsche Telekom AG",
+    266
+   ],
+   [
+    "Verizon Business",
+    207
+   ],
+   [
+    "China Mobile Communications Group Co., Ltd",
+    174
+   ],
+   [
+    "Charter Communications Inc",
+    157
+   ],
+   [
+    "Palo Alto Networks, Inc",
+    133
+   ],
+   [
+    "Chunghwa Telecom Data Communication Business Group",
+    131
+   ],
+   [
+    "Comcast Cable Communications, LLC",
+    120
+   ],
+   [
+    "Sky UK Limited",
+    116
+   ],
+   [
+    "Internet Utilities NA LLC",
+    109
+   ],
+   [
+    "Reliance Jio Infocomm Limited",
+    87
+   ]
+  ],
+  "none": [
+   [
+    null,
+    6
+   ]
+  ]
+ }
+}

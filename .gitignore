@@ -1,0 +1,18 @@
+# Raw dataset (17.6 GB) never goes in git; only data/sample/ is committed.
+dataset.json.zst
+*.json.zst
+!data/sample/*.zst
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Local config / secrets
+.env
+
+# Generated data
+*.duckdb
+*.parquet
