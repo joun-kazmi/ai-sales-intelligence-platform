@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ a.domain }}{% endblock %}
+{% block content %}
+<h2>{{ a.domain }}</h2>
+<p>
+  Score <b>{{ a.score }}</b> · Tier <span class="tier t{{ a.tier }}">{{ a.tier if a.tier else "–" }}</span>
+  · rank {{ a.rank }} · link confidence {{ a.attribution_label }}
+  · {{ a.eligibility.replace("_", " ") }}{% if a.eligibility_reason %} ({{ a.eligibility_reason }}){% endif %}
+  · {{ a.n_ips }} IPs, {{ a.n_records }} records
+</p>
+<h3>Score breakdown</h3>
+<table style="width:auto">
+  <tr><td>Exposure</td><td class="num">{{ a.exposure_points }}</td></tr>
+  <tr><td>Software</td><td class="num">{{ a.software_points }}</td></tr>
+  <tr><td>Neglect</td><td class="num">{{ a.neglect_points }}</td></tr>
+  <tr><th>Total</th><th class="num">{{ a.exposure_points + a.software_points + a.neglect_points }}</th></tr>
+</table>
+{% for title, items in sections %}
+<h3>{{ title }}</h3>
+{% if items %}
+<table>
+  <thead><tr><th>Points</th><th>Finding</th><th>Where</th><th>Software</th><th>CVEs</th><th>Linked by</th><th>Observed</th></tr></thead>
+  <tbody>
+  {% for x in items %}
+  <tr>
+    <td class="num">{{ x.points }}</td>
+    <td>{{ x.sentence }}</td>
+    <td>{% if x.ip %}{{ x.ip }}:{{ x.port }}{% if x.module %}<br><span class="muted">{{ x.module }}</span>{% endif %}{% endif %}</td>
+    <td>{{ [x.product, x.version] | select | join(" ") }}</td>
+    <td>{% for c in x.cves %}<div>{{ c.cve }}{% if c.cvss is not none %} · CVSS {{ c.cvss }}{% endif %}{% if c.epss is not none %} · EPSS {{ "%.2f" | format(c.epss) }}{% endif %}{% if c.kev %} · <span class="tag why">KEV</span>{% endif %} · <span class="tag">{{ "verified" if c.verified else "potential" }}</span></div>{% endfor %}</td>
+    <td>{% if x.attribution == "via_ip" %}same IP as a named record{% else %}{{ source_text.get(x.source, x.source) }}{% endif %}</td>
+    <td class="muted">{{ (x.observed_at or "")[:16] }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="muted">None.</p>{% endif %}
+{% endfor %}
+{% endblock %}

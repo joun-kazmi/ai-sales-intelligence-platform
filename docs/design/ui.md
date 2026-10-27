@@ -1,6 +1,7 @@
 # UI spec (MVP)
 
-Status: approved 2026-10-28 (incl. Jinja2 and the end-of-life sentence match as a known MVP shortcut). Plain server-rendered HTML tables (D21: UI
+Status: approved 2026-10-28 (incl. Jinja2 and the end-of-life sentence match as a known MVP shortcut);
+built on `feature/ui` 2026-10-28. `ARTIFACT_PATH` serves a local artifact without the release download (local runs, tests). Plain server-rendered HTML tables (D21: UI
 polish is out of scope). Reads only the artifact tables `accounts`, `findings`, `manifest`.
 
 ## Rules for every page

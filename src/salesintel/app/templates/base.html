@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}Accounts{% endblock %} · Sales intelligence</title>
+<style>
+  body { font: 14px/1.45 system-ui, sans-serif; margin: 0; color: #1d2430; background: #fff; }
+  header { padding: 12px 20px; border-bottom: 1px solid #dde2ea; background: #f6f8fb; }
+  header h1 { font-size: 17px; margin: 0 0 4px; }
+  header .meta { color: #5a6577; font-size: 12px; }
+  nav a { margin-right: 14px; }
+  main { padding: 16px 20px; max-width: 1400px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid #e6e9ef; }
+  th { font-size: 12px; color: #5a6577; font-weight: 600; }
+  td.num { text-align: right; white-space: nowrap; }
+  .tier { display: inline-block; min-width: 18px; text-align: center; border-radius: 3px; padding: 0 4px; font-weight: 600; }
+  .t1 { background: #f8d7d3; } .t2 { background: #fbe9c6; } .t3 { background: #e7ecf3; } .t0 { background: #f1f1f1; color: #777; }
+  .tag { display: inline-block; font-size: 11px; padding: 0 5px; border-radius: 3px; background: #eef1f6; margin: 1px 2px 1px 0; }
+  .why { background: #fff0d9; }
+  .muted { color: #6b7587; font-size: 12px; }
+  form.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 12px; }
+  form.filters label { font-size: 12px; color: #5a6577; display: flex; flex-direction: column; }
+  ul.reasons { margin: 0; padding-left: 16px; }
+  .note { background: #f6f8fb; border-left: 3px solid #9fb0c8; padding: 6px 10px; margin: 8px 0 14px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Research priority for external attack surface / vulnerability management</h1>
+  <nav><a href="/">Ranked list</a><a href="/plays">Plays</a>{% block navextra %}{% endblock %}</nav>
+  <div class="meta">
+    Snapshot {{ m.get("snapshot_from", "")[:16] }} to {{ m.get("snapshot_to", "")[:16] }} UTC
+    · source {{ m.get("input_file", "") }} ({{ m.get("input_sha256", "")[:12] }})
+    · scoring config {{ m.get("scoring_config_version", "") }}
+    · {{ m.get("accounts", "") }} accounts
+  </div>
+</header>
+<main>
+<p class="note">Evidence comes from one Shodan scan. "Potential" CVEs are matched from the version a
+banner reports, not verified on the host; "verified" ones were confirmed by Shodan. A score is a
+research priority, not a breach probability.</p>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

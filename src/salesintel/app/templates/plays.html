@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Plays{% endblock %}
+{% block content %}
+<h2>Plays</h2>
+<p class="muted">One outreach motion per problem. Counts include unranked accounts and hide likely non-prospects.</p>
+<table>
+  <thead><tr><th>Play</th><th>Who to call</th><th>Accounts</th></tr></thead>
+  <tbody>
+  {% for key, (title, buyer, _) in plays.items() %}
+  <tr><td><a href="/?play={{ key }}">{{ title }}</a></td><td>{{ buyer }}</td><td class="num">{{ counts[key] }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

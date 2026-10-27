@@ -225,7 +225,17 @@ matches less often than both Medium sources. Hypothesis [H]: the certificate nam
 domain (or a service name) while the web host lives elsewhere, e.g. a cert for `acme.com` on a
 mail or VPN server whose IP is not what `acme.com` resolves to. Attribution labels stay unchanged
 until the owner's hand-check of the 30 misses (`misses.csv`) is in. Via-IP is the weakest link,
-as its Low label says. C2 pool built from `data-v1`: 60 accounts (20 / 20 / 20), overlap ours vs
+as its Low label says.
+
+**False exposures [M]** (sample artifact, config `765eef67e0c5`, found while checking the UI): the
+Shodan module names the probe that ran, not always the service that answered. Of 382
+exposed-service findings, ~13 (3.4%) carry a product of a different service: `rdp` answered by
+OpenSSH / ProFTPD / RPC over HTTP (3), `telnet` by OpenSSH (5), `ms-sql` by nginx (2), `mysql` by
+nginx (1), `dnp3` by nginx / Ncat (2). Proposed fix (not applied; the config is frozen and the C2
+pool is being labelled): count an exposure only when the identified product is absent or is not a
+generic SSH / FTP / HTTP / proxy server. Open decision for the owner.
+
+C2 pool built from `data-v1`: 60 accounts (20 / 20 / 20), overlap ours vs
 highest-CVSS 0, 425 s, peak RSS 0.97 GB.
 
 ## 6. Recommended pipeline implications (superseded by `docs/DECISIONS.md`)

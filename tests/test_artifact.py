@@ -78,7 +78,15 @@ def test_partial_config_fails_closed(monkeypatch):
 
 
 def test_app_serves_manifest_after_download(tmp_path, monkeypatch):
-    payload = make_duckdb(tmp_path / "src.duckdb")
+    con = duckdb.connect(str(tmp_path / "src.duckdb"))
+    con.execute("CREATE TABLE manifest (key VARCHAR, value VARCHAR)")
+    con.execute("INSERT INTO manifest VALUES ('input_sha256', 'abc123'), ('rows', '42')")
+    con.execute("""CREATE TABLE accounts (rank BIGINT, domain VARCHAR, score BIGINT, tier BIGINT, reasons VARCHAR[],
+        why_now VARCHAR[], facts VARCHAR[], appliances VARCHAR[], attribution_label VARCHAR, eligibility VARCHAR,
+        eligibility_reason VARCHAR, n_ips BIGINT)""")
+    con.execute("CREATE TABLE findings (domain VARCHAR, kind VARCHAR, sentence VARCHAR, cves VARCHAR)")
+    con.close()
+    payload = (tmp_path / "src.duckdb").read_bytes()
     monkeypatch.setenv("APP_USERNAME", "u")
     monkeypatch.setenv("APP_PASSWORD", "p")
     for k, v in {"ARTIFACT_REPO": REPO, "ARTIFACT_TAG": TAG, "ARTIFACT_NAME": NAME,
@@ -88,4 +96,4 @@ def test_app_serves_manifest_after_download(tmp_path, monkeypatch):
     monkeypatch.setattr("salesintel.app.main.download", lambda c: real(c, github(payload)))
     with TestClient(create_app()) as client:
         body = client.get("/", auth=("u", "p")).text
-    assert "input_sha256: abc123" in body
+    assert "abc123" in body and "0 accounts" in body
