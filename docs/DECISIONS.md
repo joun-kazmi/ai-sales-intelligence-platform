@@ -387,3 +387,13 @@ One entry per decision: decision, options considered, why, date.
 - **Why**: Python's `hash()` is salted per process, so the sample would change on every run.
   Counting domains inside the sample would make shared IPs look single-domain whenever only one
   of their domains was sampled, which would wrongly allow via-IP attribution.
+
+## D44. Public Suffix List with the private section (2026-10-27)
+- **Decision**: Registrable domains use the PSL snapshot bundled with tldextract, **including the
+  private section**, offline. Infra suffixes are matched against the full hostname before PSL
+  reduction.
+- **Options**: ICANN section only.
+- **Why**: ICANN-only reduces `alice.duckdns.org` and `shop.herokuapp.com` to `duckdns.org` and
+  `herokuapp.com`, merging unrelated users into one fake account. With the private section each
+  tenant stays separate, and D34's eligibility label marks dynamic-DNS hosts as non-prospects.
+  Cloud PTR names (`*.compute-1.amazonaws.com`) are still dropped by the infra suffix match.

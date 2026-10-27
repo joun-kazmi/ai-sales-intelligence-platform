@@ -19,3 +19,6 @@ __pycache__/
 
 # Private notes
 *_NOT_TO_COMMIT*
+
+# Pipeline outputs (feature partitions, samples, artifacts)
+out/

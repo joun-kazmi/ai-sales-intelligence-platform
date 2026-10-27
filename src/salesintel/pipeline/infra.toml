@@ -1,0 +1,62 @@
+# Infrastructure lists for extract (signals-scoring.md section 1, D24).
+# The extractor records sha256 of this file as the blocklist version in every manifest.
+# Seeded from DATA_NOTES 4 and data/sample/entity_probe*.json; grow it from measured data only.
+
+# Records from these modules carry no usable signal (DATA_NOTES 3).
+noise_modules = ["nodata-tcp", "x11", "language-server-protocol", "ike"]
+
+# Shared CDN / WAF edge: the `cdn` tag, or org/isp matching one of these (case-insensitive regex).
+cdn_orgs = [
+    "incapsula", "imperva", "cloudflare", "akamai technologies", "akamai international",
+    "fastly", "edgecast", "edgio", "limelight", "stackpath", "highwinds", "cdn77",
+    "datacamp limited", "bunny", "sucuri", "cdnetworks", "chinacache", "wangsu", "quantil",
+]
+
+# Cloud / hosting: `cloud.provider` set, the `cloud` tag, or org/isp matching one of these.
+hosting_orgs = [
+    "amazon", "google", "microsoft", "azure", "alibaba", "aliyun", "tencent", "oracle",
+    "softlayer", "ibm cloud", "hetzner", "ovh", "digitalocean", "linode", "akamai connected cloud",
+    "vultr", "choopa", "contabo", "ionos", "1&1", "strato", "hostinger", "godaddy", "go daddy",
+    "leaseweb", "scaleway", "online s\\.a\\.s", "hostgator", "bluehost", "unified layer",
+    "namecheap", "hostwinds", "kamatera", "m247", "psychz", "colocrossing", "servers\\.com",
+    "huawei cloud", "huawei clouds", "baidu", "ucloud", "kingsoft cloud", "naver cloud",
+    "sakura internet", "xserver", "gmo internet", "fly\\.io", "heroku", "vercel", "netlify",
+    "github", "upcloud", "gcore", "g-core", "zenlayer", "\\bhosting\\b", "\\bvps\\b",
+    "data ?cent(er|re)", "\\bcolo(cation)?\\b",
+]
+
+# Hostname suffixes that name infrastructure, never a customer. Matched against the full
+# hostname (so `ec2-1-2-3-4.compute-1.amazonaws.com` is dropped before PSL reduction).
+infra_domain_suffixes = [
+    # CDN / WAF
+    "incapdns.net", "imperva.com", "incapsula.com", "cloudflare.net", "cloudflare.com",
+    "cloudfront.net", "akamaitechnologies.com", "akamaiedge.net", "akamai.net", "edgekey.net",
+    "edgesuite.net", "fastly.net", "edgecastcdn.net", "awsglobalaccelerator.com",
+    # Cloud / hosting
+    "googleusercontent.com", "1e100.net", "amazonaws.com", "cloudapp.net", "azure.com",
+    "azurewebsites.net", "your-server.de", "hetzner.com", "hetzner.de", "scw.cloud",
+    "linodeusercontent.com", "linode.com", "hwclouds-dns.com", "vultrusercontent.com",
+    "vultr.com", "contaboserver.net", "ovh.net", "ovh.ca", "secureserver.net", "flyio.net",
+    "fly.dev", "herokuapp.com", "herokudns.com", "vercel-dns.com", "netlify.app",
+    "digitaloceanspaces.com", "aliyuncs.com", "myqcloud.com", "tencent-cloud.net",
+    "oraclecloud.com", "pbiaas.com", "stratoserver.net", "sakura.ne.jp", "xserver.jp",
+    "infomaniak.ch", "my-free.website",
+    # ISP / telecom PTR zones
+    "btcentralplus.com", "t-ipconnect.de", "spectrum.com", "hinet.net", "nuro.jp", "myvzw.com",
+    "rima-tde.net", "virginm.net", "ocn.ne.jp", "comcast.net", "verizon.net", "rr.com",
+    "charter.com", "cox.net", "sbcglobal.net", "shawcable.net", "telus.net",
+    # Measured leaks, line-sample extract 2026-10-27 (top candidate domains that are infra)
+    "vnpt.vn", "viettel.vn", "wanadoo.fr", "inet.fi", "telepac.pt", "orange.es", "nt-isp.net",
+    "pphosted.com", "cloudwaysapps.com", "ovh.us", "sl-reverse.com", "bluehost.com",
+    "hosteurope.de", "nazwa.pl", "wpengine.com", "flywheelsites.com", "ctcdn.cn", "notexist.com",
+]
+
+# Customer appliances (kept as facts, 0 points). Regex over product, http.title, http.server
+# and cert O, lowercased. First match wins.
+[appliances]
+fortinet = "\\bforti(gate|os|web|mail|net|proxy|analyzer|manager|client|ap|switch)\\b"
+sonicwall = "sonicwall"
+citrix = "citrix|netscaler"
+ivanti = "ivanti|pulse secure|pulse connect"
+paloalto = "globalprotect|pan-os|palo alto"
+f5 = "big-?ip|f5 networks"

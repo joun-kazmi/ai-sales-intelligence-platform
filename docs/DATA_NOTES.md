@@ -111,6 +111,24 @@ Exposed-service counts (full pass, records): 21/FTP 40.5k, 3389/RDP 48.8k (0.33%
 
 **Firmographic/size proxies [H]** to combine with risk: number of distinct IPs/domains per company, cert `O` present, cloud provider mix, presence of enterprise gear (Fortinet, SonicWall, Citrix, Exchange, Proofpoint), hostnames count per domain, TLD/country.
 
+## 5c. Extractor measurements [M]
+Line sample (91,303 records, 800 MB raw, 94 MB zst), cloud sandbox, 3 worker processes on 4 cores,
+extractor v1, blocklist `faf9761a45c4`, 2026-10-27:
+- Throughput 14.1k records/s (6.7 s). Not comparable to the owner's 8-core machine; the full-file
+  figure comes from Wednesday's run.
+- Funnel: dropped 32,607 CDN edge records without a customer name (35.7%), 3,530 noise modules,
+  1,543 honeypot; kept 53,601 (58.7%): cloud / hosting 31,150, customer or ISP network 19,833,
+  CDN records that name a domain 2,640. Records with at least one candidate name: 8,294 (9.1%).
+- Name sources (records, before the measured-leak additions): PTR 7,066, scan hostname 3,541,
+  cert CN 1,379, `http.host` 44. Distinct candidate domains: 8,086.
+- Feature layer: 6.6 MB Parquet (zstd) for 800 MB raw, ~0.8% of raw / ~7% of the zst input.
+- Top candidate domains still included ISPs and hosters (vnpt.vn, wanadoo.fr, pphosted.com,
+  wpengine.com, ...); 18 were added to the blocklist. Real companies with many IPs (walmart.com,
+  79 IPs in its own org) look similar by counts alone, so the rest is left to eligibility (D34).
+- Sample builder on the same file (mechanics test, modulus 20): 388 of 8,086 domains, 475 IPs,
+  184 of them shared (2+ candidate domains in the full index); raw pass ~31k records/s, single
+  process.
+
 ## 6. Recommended pipeline implications (superseded by `docs/DECISIONS.md`)
 1. Pre-filter: drop `tags` in (`honeypot`), modules in noise list, and records whose org class is CDN/ISP *and* whose only names are PTR names.
 2. Build a company table keyed by registrable domain (use a public-suffix list), attach all IPs/ports/signals, dedupe CVEs per product, not per record.
