@@ -38,7 +38,7 @@ Top products: nginx 5.2, Apache httpd 1.9, CloudFront 1.5, AkamaiGHost 1.1, Open
 
 ## 3. Quirks [M unless noted]
 - **Edge-IP dominance**: 1/3 of records are Imperva/Incapsula edge IPs, 1/5 Google LLC. Their `domains`/`hostnames` are CDN/PTR names (`incapdns.net`, `googleusercontent.com`), and their banners/CVEs describe the CDN, not the customer.
-- **`vulns` are heavily duplicated**: the same CVE list (e.g. CVE-2013-4365, CVE-2012-3526, ... on 131,415 records each; CVE-2023-44487 on 173k; CVE-2025-23419 on 174k) fires on shared edge infrastructure. Several IDs look like `CVE-2026-9xxxx` (implausible numbers; treat IDs as opaque, do not rely on an external NVD join without checking). CVSS buckets across all CVE hits: 7.x 7.4M, 5.x 4.0M, 9.x 3.1M, 10 59k.
+- **`vulns` are heavily duplicated**: the same CVE list (e.g. CVE-2013-4365, CVE-2012-3526, ... on 131,415 records each; CVE-2023-44487 on 173k; CVE-2025-23419 on 174k) fires on shared edge infrastructure. Several IDs look like `CVE-2026-9xxxx` (high numbers, unverified; treat IDs as opaque, do not rely on an external NVD join without checking; see 5b). CVSS buckets across all CVE hits: 7.x 7.4M, 5.x 4.0M, 9.x 3.1M, 10 59k.
 - **Missing versions**: `vulns` come from banner version matching (not verified); `opts.vulns` (verified) is 0.03%.
 - `ssl.versions` lists unsupported protocols as `-TLSv1.3`; I counted only non-negated.
 - `ssl.cert.expired` is a precomputed bool (used as-is). `ssl.cert.subject`==`issuer` used for self-signed (also tag `self-signed`).
@@ -91,6 +91,17 @@ Prevalence: "% records" = full pass [M]; "% vanity domains" = sample, domain-lev
 | 12 | Basic-auth / 401 on exposed admin | 0.82 | 1.3 | 2.1 | low-medium |
 | 13 | Composite: >=2 / >=3 of the 8 core signals (CVSS>=7, expired cert, deprecated TLS, no HSTS, exposed remote/DB, EOL, self-signed, version disclosed) | | 23.4 / 7.2 | | best ranking feature |
 Absence-of-defence signals (negative for "needs help" or "already buys"): WAF present 10.7% of records, 42% of vanity domains (Imperva/Cloudflare/CloudFront/Akamai/FortiWeb/SonicWall). Domains already behind a WAF/CDN likely already spend on security [H]; "has Imperva/FortiWeb/Cloudflare" is also a competitive-displacement or upsell flag.
+
+### 5b. CVE metadata inside `vulns` [M, 1-in-160 sample, 2026-10-27]
+Each `vulns[CVE]` entry has: `cvss`, `cvss_version`, `cvss_v2`, `epss`, `ranking_epss`, `summary`, `references`, `verified`, and (on ~1.8% of CVE hits) `kev` + `ransomware_campaign`. Sample: 2,909 records with `vulns`, 126,814 CVE hits, 4,134 distinct CVEs.
+- `verified`: True on 44 of 126,814 hits. CVEs are banner-version matches; treat as "potential".
+- `cvss_version`: 3.0 80%, 2.0 18%, 4.0 2%. Scores mix CVSS versions.
+- `epss` (exploit probability, next 30 days): float on every hit, 0.0006-0.99999. Distinct CVEs: <0.01 1,038; 0.01-0.1 2,245; 0.1-0.5 550; >=0.5 301.
+- `kev` (CISA Known Exploited Vulnerabilities): True on 2,268 hits / 58 distinct CVEs; 42 of the 58 also have EPSS>=0.5. `ransomware_campaign`: Known 372, Unknown 1,889 hits.
+- **Everywhere-CVEs**: CVE-2023-44487 (HTTP/2 Rapid Reset) is on 1,133 of 2,909 vuln records with **EPSS ~1.0 and KEV True**, so EPSS and KEV *raise* it; only prevalence can down-weight it. Of 2,345 records with a KEV or EPSS>=0.5 CVE, 686 have no strong CVE other than CVE-2023-44487. The next tier (CVE-2025-23419, a 2009-2013 Apache list on 801 records each) has low EPSS (0.007-0.14), so EPSS does down-weight those.
+- Lists are long and repeated: median 11 CVEs per vuln record, p90 125, max 676. The 2,909 records collapse to **291 distinct (product, version)** pairs (nginx 1.24.0 439, nginx 1.18.0 292, OpenSSH 7.4 184, ...). The CVE count is an artifact of version matching; the real finding is "product X at version Y".
+- **No publication date** on CVE entries. **CVE-2026-\***: 539 distinct IDs, 39,284 of 126,814 hits (31%), ID numbers up to ~110,000, 456 of 539 with EPSS<0.01 (expected for new CVEs, EPSS lags), 13 KEV. The ID year is the year the ID was reserved, so a CVE-2026 ID cannot have been published before 2026: a valid one-sided "published this year" marker. Whether the high ID numbers are genuine is not verified (no NVD join); this supersedes the "implausible" remark in section 3 as an open question, not a finding.
+- Edge / security appliances detected by product, title, server or cert `O` (Fortinet 56, SonicWall 102, F5 75, Citrix 29, Ivanti/Pulse 9, Exchange/OWA 11, Palo Alto 8, VMware 5, Cisco ASA 2 records) **almost never carry `vulns`** (2 of ~300): appliances don't expose versions in banners. Their presence is attack surface and a spend signal, not CVE evidence.
 
 Exposed-service counts (full pass, records): 21/FTP 40.5k, 3389/RDP 48.8k (0.33%), 445/SMB 6.0k, 5985/WinRM 33.4k, 3306/MySQL 14.5k, 1433/MSSQL 6.6k, 5432/Postgres 6.6k, 27017/Mongo 5.5k, 6379/Redis 5.1k, 9200/ES 5.1k, 5900/VNC 4.1k, 11211/Memcached 4.1k, 2375/Docker ~0.03%, 102/S7 15.6k, 502/Modbus 4.4k, 161/SNMP 172k, 7547/TR-069 127k, telnet 23 ~4k. Admin-panel titles (of 2.49M titled records): login/sign-in 3.5%, admin/dashboard/console 1.2%, router/gateway 1.3%, camera/NVR 0.3%, VPN/remote access (Fortinet, Citrix, GlobalProtect, ...) 0.35%, DevOps tools 0.24%, db-admin 0.03%.
 

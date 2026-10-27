@@ -20,7 +20,7 @@ One entry per decision: decision, options considered, why, date.
 - **Options**: change-over-time only (impossible with one file); simulate a second snapshot
   (rejected as misleading); in-snapshot timing signals.
 - **Why**: These are true "act now" reasons that exist today. The record has no CVE publication
-  date, and CVE-2026-* IDs look inflated (39k of 99k hits in sample), so CVE recency stays
+  date, and CVE-2026-* IDs look inflated (39k of 127k hits in sample), so CVE recency stays
   [H]. EOL recency needs a static lifecycle reference (EOL dates are not in the file).
 
 ## D3. Account key and naming (2026-10-27)
@@ -74,3 +74,48 @@ One entry per decision: decision, options considered, why, date.
 - **Options**: keep the line sample; full file for everything.
 - **Why**: The line sample has ~1.7 records per domain, so domain-level aggregates computed on it
   are truncated. The full file takes ~13 min per pass and stays on the owner's machine.
+
+## D9. Scale model: per-file, parallel, idempotent, then merge (2026-10-27)
+- **Decision**: Each file is processed independently and in parallel, keyed by its content hash
+  (re-runs and duplicate deliveries are no-ops), then merged by domain. The MVP runs one file
+  locally; scale-out is design only.
+- **Options**: one big batch over all files; streaming per record into a central store.
+- **Why**: Files are independent. Measured 754 s per file on 8 cores means 1,000 files/month is
+  ~210 machine-hours (~29% of one 8-core machine-month); compute scales linearly. Storage
+  (~17.6 TB compressed per 1,000 files) is the real cost.
+
+## D10. Raw retention (2026-10-27)
+- **Decision**: In production, keep raw in cold object storage for N days and keep an extracted
+  feature layer rich enough to re-score without reprocessing.
+- **Options**: delete raw after extraction; keep all raw.
+- **Why**: Deleting raw makes new signals impossible to backfill; keeping all raw costs tens of
+  TB per month. A feature layer makes scoring changes cheap; the N-day window bounds backfill
+  cost.
+
+## D11. Coverage-aware merge (2026-10-27)
+- **Decision**: On each new file a finding is new, still present, resolved (same IP:port was
+  scanned and the finding is absent) or not observed (IP:port not scanned). Missing never means
+  fixed.
+- **Options**: treat absence as resolved; keep findings forever.
+- **Why**: Each file is a partial scan. Without coverage, "resolved" would mostly mean "not
+  scanned this time" and UC4 would report false improvements.
+
+## D12. Reviewer credentials (2026-10-27)
+- **Decision**: Sample credentials live in host environment variables and the submission note
+  only. The README says "credentials provided separately".
+- **Options**: credentials in the README.
+- **Why**: The app lists vulnerable organisations with evidence; the repository may be public.
+
+## D13. MVP priority per requirement (2026-10-27)
+- **Decision**: Must: FR1, FR2a (score/tier, signal type, why-now, security gear), FR3-FR10.
+  Nice: FR2b (confidence, country), FR2c (industry, depends on step 3). Design only: FR11.
+- **Options**: full filter set in the MVP.
+- **Why**: Deadline Fri 2026-10-30. Signals, scoring and measurement matter more than filters.
+
+## D14. Down-weighting everywhere-CVEs (2026-10-27)
+- **Decision**: Weight CVEs by EPSS and by prevalence across accounts. Prevalence is what
+  handles CVE-2023-44487.
+- **Options**: CVSS only; EPSS only; a hand-kept list of commodity CVEs.
+- **Why**: Measured on the sample: CVE-2023-44487 sits on 1,133 of 2,909 vuln records with EPSS
+  ~1.0 and KEV True, so EPSS alone would *raise* it. EPSS does down-weight the 2009-2013
+  Apache list repeated on 801 records (EPSS 0.007-0.14). Formula in step 3.

@@ -70,7 +70,7 @@ CDN/infra exclusion, so they only show that a field exists and roughly how commo
 |---|---|---|
 | Cert expiring within 30 days | `ssl.cert.expires` vs record `timestamp` | 273 of 6,262 certs in sample (4.4%); already expired 332 (5.3%) [M]. Measured against scan time, not today. |
 | Actively exploited CVE | `vulns[CVE].kev` (CISA Known Exploited Vulnerabilities flag), `ransomware_campaign` (`Known`/`Unknown`), `epss` | Not in DATA_NOTES; found 2026-10-27. 58 distinct KEV CVEs in sample. The most common is CVE-2023-44487 (HTTP/2 Rapid Reset, on most nginx). Only 647 of 2,909 vuln records have a KEV CVE besides it [M]. Near-universal CVEs need down-weighting (step 3). |
-| Recently published CVE | **Not in the file.** Records carry no publication date; the CVE-ID year is a weak proxy | CVE-2026-* make up 39k of 99k CVE hits in sample, 539 distinct IDs numbered up to ~110,000 [M], which matches the "implausible IDs" note in DATA_NOTES 3. ID-year recency is unreliable until checked (step 3). |
+| Recently published CVE | **Not in the file.** Records carry no publication date; the CVE-ID year is a weak proxy | CVE-2026-* make up 39k of 127k CVE hits in sample (31%), 539 distinct IDs numbered up to ~110,000 [M], which matches the "implausible IDs" note in DATA_NOTES 3. ID-year recency is unreliable until checked (step 3). |
 | Recently went end-of-life | `eol-product` tag only, **no EOL date** | 90% of tagged records are nginx [M]. "Recently" needs a static product-lifecycle reference keyed by product+version (this is reference data, not company enrichment), and version is on only 6.5% of all records [M]. Decide in step 3. |
 
 ## Evidence rules carried into requirements and scoring
