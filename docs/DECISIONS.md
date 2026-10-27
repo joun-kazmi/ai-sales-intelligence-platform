@@ -13,6 +13,7 @@ One entry per decision: decision, options considered, why, date.
   snapshots and we have one.
 
 ## D2. "Why now" in a single snapshot (2026-10-27, amended after step 3)
+- **Status**: partly superseded by D25 (cert expiring is a marker with 0 points) (2026-10-27, external review).
 - **Decision**: The MVP's why-now markers are: cert expiring within 30 days (+5 points) and a
   KEV-flagged (actively exploited) potential CVE (marker only; its points count once, under
   Exposure, D16). "Published this year" (CVE-2026-* IDs) is off, with 0 points, until a spot-check
@@ -29,6 +30,7 @@ One entry per decision: decision, options considered, why, date.
   records, so "recently EOL" would add a reference table for little coverage.
 
 ## D3. Account key and naming (2026-10-27)
+- **Status**: resolver order superseded by D29 (2026-10-27, external review).
 - **Decision**: The account is the registrable domain, shown with a resolution-confidence label
   (scan hostname > non-wildcard cert CN > named PTR > `http.host`). A display name is shown only
   when it passes a filter (not an error/default title, not a vendor cert `O`); otherwise none.
@@ -40,6 +42,7 @@ One entry per decision: decision, options considered, why, date.
   enrichment adds cost and a dependency.
 
 ## D4. Country filter, not territory (2026-10-27)
+- **Status**: superseded by D29 (country filter cut) (2026-10-27, external review).
 - **Decision**: Add a simple "country" filter with its source labelled: IP country of the
   account's self-hosted (non-CDN/cloud-edge) assets, or ccTLD. It is not part of UC1's headline.
 - **Options**: territory as UC1's organising idea; ccTLD first; cut entirely.
@@ -72,6 +75,7 @@ One entry per decision: decision, options considered, why, date.
   "how we know it's right and what it costs", but only if it measurably beats rules.
 
 ## D8. Development data (2026-10-27)
+- **Status**: sample key refined by D23 (2026-10-27, external review).
 - **Decision**: Develop domain-level features and scoring on a **domain-complete sample**: the
   owner regenerates it locally once the record -> domain key is fixed, by hash-sampling ~1 in 20
   domains, keeping all of their records and dropping `http.html` and raw `data`. The existing
@@ -118,6 +122,7 @@ One entry per decision: decision, options considered, why, date.
 - **Why**: Deadline Fri 2026-10-30. Signals, scoring and measurement matter more than filters.
 
 ## D14. Down-weighting everywhere-CVEs (2026-10-27)
+- **Status**: superseded by D26 (2026-10-27, external review).
 - **Decision**: Weight CVEs by EPSS and by prevalence across accounts. Prevalence is what
   handles CVE-2023-44487.
 - **Options**: CVSS only; EPSS only; a hand-kept list of commodity CVEs.
@@ -126,6 +131,7 @@ One entry per decision: decision, options considered, why, date.
   Apache list repeated on 801 records (EPSS 0.007-0.14). Formula in step 3.
 
 ## D15. Entity resolution (2026-10-27)
+- **Status**: superseded by D23 and D24 (2026-10-27, external review).
 - **Decision**: Two passes. Pass 1 picks candidate names per record (scan hostname > cert CN >
   `http.host` > non-IP-like PTR), reduces them to registrable domains and drops infrastructure
   domains (seeded list + "PTR embeds the IP" rule). Pass 2 assigns each IP with one surviving
@@ -137,6 +143,7 @@ One entry per decision: decision, options considered, why, date.
   IPs would attribute the host's exposure to every tenant.
 
 ## D16. Scoring model (2026-10-27)
+- **Status**: superseded by D25 (2026-10-27, external review).
 - **Decision**: Transparent additive points per finding type (Exposure 8-30, Neglect capped at
   15, cert-expiring +5). KEV counts once, under Exposure, and also shows as a why-now marker.
   CVE-2026 IDs score 0 until verified. Prevalence discount 0.2x above ~10% of CVE-bearing
@@ -146,6 +153,7 @@ One entry per decision: decision, options considered, why, date.
   keep tiers comparable across monthly files. CDN-fronted accounts are under-observed, not safe.
 
 ## D17. Measurement plan (2026-10-27)
+- **Status**: superseded by D28 (2026-10-27, external review).
 - **Decision**: C1 forward-DNS confirmation of IP->domain links (automated, audit only) plus ~30
   hand checks. C2 pooled labelling and precision@50 vs max-CVSS, CVE-count and random baselines
   (headline). C3 KEV lift of a KEV-free score. C4 ±25% weight sensitivity. C5 design only. One
@@ -155,6 +163,7 @@ One entry per decision: decision, options considered, why, date.
   labels. Beating "highest CVSS first" is the evidence that the signal work added value.
 
 ## D18. LLM use (2026-10-27)
+- **Status**: superseded by D28 (2026-10-27, external review).
 - **Decision**: MVP uses one LLM: the C2 labelling assistant (`claude-opus-5-5`), measured by
   Cohen's kappa against 60 owner labels, cost from real token usage. The account classifier is
   design only; MVP uses TLD/keyword rules; build the LLM version only if time remains. No LLM in
@@ -197,3 +206,101 @@ One entry per decision: decision, options considered, why, date.
 - **Options**: pipeline first, deploy on Thursday.
 - **Why**: Hosting and the sample build are the two dependencies outside the code; both are
   cleared on Wednesday.
+
+## D23. Attribution: direct vs via-IP (2026-10-27, external review)
+- **Decision**: Every finding is tagged **direct** (the record itself names the domain) or
+  **via-IP**. Via-IP counts only if the IP has exactly one domain and its org is not CDN or
+  cloud / hosting. IPs with 2+ domains are unresolved for nameless records. No shared-hosting
+  threshold K. The dev sample keeps every record of IPs on which a sampled domain appears directly.
+- **Options**: assign whole IPs to a dominant domain; a K-domain shared-hosting threshold.
+- **Why**: A K threshold has no principled value, and a wrong IP link puts another company's
+  exposure on an account. Requiring a single domain and a non-hosting org keeps via-IP links to
+  the cases where they are most likely right; C1 measures them.
+
+## D24. Three infrastructure classes (2026-10-27, external review)
+- **Decision**: Shared CDN / WAF edge: dropped unless the record names the domain, and then only a
+  "behind <edge>" fact, never findings. Cloud / hosting org: direct findings count, no via-IP.
+  Customer appliance: kept as a fact, 0 points. The same policy in `architecture.md`, FR7 and
+  `signals-scoring.md`.
+- **Options**: one "infra" class dropped wholesale; per-doc variants.
+- **Why**: The three cases differ: edge banners describe the CDN; hosting IPs carry real customer
+  software but are shared and re-assigned; appliances are customer-owned facts. One stated policy
+  removes contradictions between docs.
+
+## D25. Scoring revision (2026-10-27, external review)
+- **Decision**: Exposed remote access / DB / ICS detected by Shodan module (not port) scores 45
+  and reaches Tier 1 alone. Per product + version: at most one CVE award (potential KEV 25, or
+  EPSS >= 0.1 and CVSS >= 7 15) plus EOL 15, capped at 30 per product; software total capped at
+  40 per account. Neglect capped at 10. Appliances, login / admin panels: 0 (filters and plays).
+  Cert expiry and KEV are why-now markers with 0 extra points. Tiers T1 >= 45, T2 25-44, T3 1-24;
+  deterministic tie-break. CVE wording: "potential match to a known-exploited CVE, observed on
+  <date>". Worked 5-account example in `signals-scoring.md`.
+- **Options**: the D16 point table; port-based detection; per-CVE awards.
+- **Why**: Per-CVE awards let one long version-matched list dominate. Ports alone mislabel
+  services. Appliances and panels are attack surface and sales facts, not evidence of need. The
+  40 software cap is our addition: without it, an outdated server running three products
+  outranks an exposed database on unverified matches alone.
+
+## D26. Ubiquitous CVEs (2026-10-27, external review)
+- **Decision**: Replace the 10% prevalence rule with a documented ubiquitous-CVE list (award 0).
+  Provisional: CVE-2023-44487. Measure each CVE's share of attributed CVE-bearing accounts on
+  Wednesday; extend the list only with measured outliers, recorded in DATA_NOTES.
+- **Options**: 10% prevalence discount; IDF weighting.
+- **Why**: Prevalence must be measured after attribution (before it, CDN duplicates dominate).
+  If one CVE is the problem, a named list is simpler to explain than a threshold.
+
+## D27. Vendor assumption and buyer roles (2026-10-27, external review)
+- **Decision**: Assume the vendor sells external attack surface / vulnerability management. The
+  score is a "research priority" for that product. Each play names a buyer role (`use-cases.md`
+  UC3).
+- **Options**: leave the product unstated.
+- **Why**: External scan data can only evidence external exposure; naming the product makes the
+  score's meaning and the plays' audience explicit.
+
+## D28. Evaluation revision (2026-10-27, external review)
+- **Decision**: Freeze weights before labelling. Up to 60 human labels: union of the top 15 from
+  our ranking, top 15 by max CVSS, top 15 by CVE count, plus 15 random; shown blind, "unknown"
+  allowed. Report precision@15 per ranking. Keep C1 (forward DNS) and C4 (±25% at k=15,
+  deterministic tie-breaks). Cut the LLM labeller and C3. No LLM in the MVP.
+- **Options**: D17/D18 (pooled top 50, LLM labeller with kappa, C3 lift).
+- **Why**: Labels collected after tuning would measure the tuning, not the ranking. A small blind
+  human set is cleaner than LLM labels calibrated against 60 human ones. Precision@15 matches the
+  label budget.
+
+## D29. Country filter cut; one resolver order (2026-10-27, external review)
+- **Decision**: Cut the country filter. Name-source order everywhere: scan hostname >
+  non-wildcard cert CN > `http.host` > named PTR.
+- **Options**: keep country as a nice-to-have; DATA_NOTES' earlier order (PTR before
+  `http.host`).
+- **Why**: Country is not in the brief. Docs disagreed on the order. `http.host` was requested by
+  the scan; PTR is set by the IP owner (often the hoster) and caused most ISP false positives.
+
+## D30. Feature schema (2026-10-27, external review)
+- **Decision**: The feature layer keeps exactly the fields mapped to scoring rules in
+  `signals-scoring.md` section 3 (including `http.server`, verification flags, CVSS version and
+  module).
+- **Options**: an informal field list.
+- **Why**: Re-scoring without reprocessing (D10) only works if every rule's inputs are retained.
+
+## D31. Comparable re-probe for "resolved" (2026-10-27, external review)
+- **Decision**: FR11 (design only): a finding is "resolved" only if the new file re-probed the same
+  IP:port with the same module and got a banner; otherwise "not observed".
+- **Options**: D11's "same IP:port scanned".
+- **Why**: A timeout or a different module on the same port says nothing about the finding.
+
+## D32. Manifest and atomic writes (2026-10-27, external review)
+- **Decision**: Every output carries a manifest (input file hash, extractor, blocklist, PSL
+  snapshot and scoring config versions, code commit, row counts) and is written atomically (temp
+  file, fsync, rename).
+- **Options**: version stamps only on the final artifact.
+- **Why**: Idempotent per-file processing (D9) needs to know exactly what produced each partition,
+  and a crash must not leave partial outputs that look complete.
+
+## D33. Plan revision (2026-10-27, external review)
+- **Decision**: Wednesday includes the full-file extraction run and a deploy through the real
+  artifact-download path. Only measured throughput is quoted. Hosted artifact hard cap 100 MB.
+  Cut order if slipping: industry / display-name heuristics, extra filters, weaker signals; never
+  attribution quality, evidence, the human eval, the hosted list or the write-up.
+- **Options**: D22's order (full run and real deploy on Thursday).
+- **Why**: Both are the largest schedule risks; finding problems on Wednesday leaves time to fix
+  them.

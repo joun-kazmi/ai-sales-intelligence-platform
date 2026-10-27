@@ -70,7 +70,7 @@ So at most roughly **5-13% of records** have an `org` that could plausibly be th
 **4c. Domain cardinality.**
 - Full file: ~488k distinct `domains[]` values (HLL), ~350k distinct cert CNs. Sample: 10.4k non-infra registrable domains vs 8.9k after infra filtering; 85% of vanity domains appear in exactly one sample record (`domains_seen_once` 7,532 of 8,884), median 1, p90 2, p99 10 records/domain. Long-tailed: the top 100 domains hold ~69% of domain-linked records (infra-heavy). Extrapolating (sample is 0.625%, so a domain with 1 hit probably has ~5-150 in full file): **estimate on the order of 100-300k real vanity domains in the full file [H]**, likely at most 1-3 hundred thousand companies after dedupe of ISPs/hosters.
 
-**Verdict**: IP -> company resolution is *weak*. Workable path: key records by registrable domain (scan hostname > cert CN non-wildcard > named PTR > `http.host`), drop CDN/hosting/ISP rDNS domains and CDN-edge records, then enrich domains externally (WHOIS/company names, LinkedIn-like lookup). Expect roughly **1 in 11 records** to join to a candidate company; the rest are infrastructure or consumer/IoT. Company names must come from outside the file (only 1.5% have cert `O`).
+**Verdict**: IP -> company resolution is *weak*. Workable path: key records by registrable domain (scan hostname > cert CN non-wildcard > `http.host` > named PTR; order fixed in D29), drop CDN/hosting/ISP rDNS domains and CDN-edge records, then enrich domains externally (WHOIS/company names, LinkedIn-like lookup). Expect roughly **1 in 11 records** to join to a candidate company; the rest are infrastructure or consumer/IoT. Company names must come from outside the file (only 1.5% have cert `O`).
 
 ## 5. Candidate "needs cybersecurity help" signals
 Prevalence: "% records" = full pass [M]; "% vanity domains" = sample, domain-level OR across that domain's records, n=8,884 [M]; "no-CDN" = vanity domains without WAF/CDN tag (n=4,849). Domain-level percentages are biased by few records per domain (1.7 avg), so true per-domain prevalence is probably higher.
@@ -111,6 +111,6 @@ Exposed-service counts (full pass, records): 21/FTP 40.5k, 3389/RDP 48.8k (0.33%
 ## 6. Recommended pipeline implications
 1. Pre-filter: drop `tags` in (`honeypot`), modules in noise list, and records whose org class is CDN/ISP *and* whose only names are PTR names.
 2. Build a company table keyed by registrable domain (use a public-suffix list), attach all IPs/ports/signals, dedupe CVEs per product, not per record.
-3. Score with a transparent rule model (CVSS>=7 + EOL + exposed admin/DB + hygiene gaps), discounted by WAF/CDN presence; add firmographic proxies.
+3. Score with a transparent rule model (CVSS>=7 + EOL + exposed admin/DB + hygiene gaps), discounted by WAF/CDN presence; add firmographic proxies. *(Superseded: no WAF/CDN discount, see `docs/design/signals-scoring.md`.)*
 4. Use `sample.jsonl.zst` (91k records) for development; full file only for the final batch.
 5. Accept that only ~9% of records link to a candidate domain; the output list will be domains, with company names via external enrichment.

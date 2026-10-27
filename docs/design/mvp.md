@@ -1,39 +1,48 @@
 # MVP scope and plan
 
-Status: agreed 2026-10-27. Due **Fri 2026-10-30**. Decisions D21-D22 in `docs/DECISIONS.md`.
+Status: agreed 2026-10-27, revised the same day after external review. Due **Fri 2026-10-30**.
+Decisions D21-D22, D33 in `docs/DECISIONS.md`.
 
 ## In scope
-- Pipeline: extract, resolve, findings + score, funnel, eval (FR7-FR10), run locally on one file.
-- App: ranked list, minimal filters, plays, account detail, CSV export, snapshot info
-  (FR1, FR2a, FR3-FR6), basic auth, noindex, on Render free tier.
-- LLM: the C2 labelling assistant only, with kappa and real token cost (D18).
-- Write-up in the README: approach, key decisions, measurement results, LLM cost, scale story.
+- Pipeline: extract, attribution, findings + score, funnel, manifest, eval C1 / C2 / C4
+  (FR7-FR10), run locally.
+- App: ranked list, minimal filters, plays with buyer roles, account detail, CSV export, snapshot
+  info (FR1, FR2a, FR3-FR6), basic auth, noindex, on Render free tier, artifact downloaded from a
+  private release.
+- Write-up in the README: approach, key decisions, measurement results, scale story, how AI was
+  used in the development workflow.
 
 ## Cuts
 | Cut | Reason |
 |---|---|
-| FR11 / UC4 coverage-aware merge, C5 temporal validation | One file; designed in `architecture.md` |
+| FR11 / UC4 coverage-aware merge, C5 | One file; designed in `architecture.md` |
 | Queue, workers, object storage, cold raw retention | Design only; the same extract code runs on a local process pool |
-| LLM account classifier | TLD / keyword rules cover industry and display name; build only with spare time |
-| FR2b (confidence, country) and FR2c (industry) filters | Nice to have |
-| "Recently went end-of-life" | No EOL dates in the file, low coverage (D2) |
-| Points for CVE-2026 IDs | Unverified until the owner's spot-check (D2) |
+| Any LLM (labeller and classifier) | One human-labelled, blind eval is the measurement; the classifier stays design only (D28) |
+| C3 (KEV lift) | Cut by review; C1, C2, C4 remain |
+| Country filter | Not in the brief; weak proxy (D29) |
+| "Recently went end-of-life", points for CVE-2026 IDs | No EOL dates; IDs unverified (D2) |
 | CRM push, enrichment, contact discovery, outreach drafting | Outside the brief (D5) |
-| UI polish | Plain server-rendered tables; the brief says the UI is not the point |
-| Broad test suite | Unit tests on entity-resolution and scoring rules, plus app auth |
+| UI polish; broad test suite | Plain server-rendered tables; unit tests on attribution, scoring rules and app auth |
+
+**Cut order if slipping:** (1) industry / display-name heuristics, (2) extra filters (FR2b),
+(3) weaker signals (neglect items first). **Never cut:** attribution quality, evidence on every
+finding, the human eval (C2), the hosted list, the write-up.
 
 ## Plan
 | When | Engineering | Owner |
 |---|---|---|
-| Tue 10-27 (eve) | Repo skeleton; bare app (hello world + basic auth + noindex) with Dockerfile and `render.yaml` | Connect the repo to Render and set env vars |
-| Wed 10-28 AM | Bare deploy live on Render (hosting risk first). Extract + pass 1 / pass 2 key function; run on the line sample; seed the infra blocklist | |
-| Wed midday | | Build the domain-complete sample with that code (~30 min) |
-| Wed PM | Resolve, findings, scoring config, funnel; set K and tier thresholds from the sample; measure feature-layer size vs raw | CVE-2026 spot-check, update DATA_NOTES 5b |
-| Thu 10-29 AM | Eval command: baselines, label pool, LLM labeller with cost logging, C3, C4; DNS confirmation script | Run the DNS script; label 60 accounts (< 1 h) |
-| Thu PM | App: list, detail, plays, CSV; artifact download from the private release; deploy with the sample artifact | Create the fine-grained token |
-| Thu eve | | Full-file run (2 x ~13 min + scoring); upload the artifact to the private release |
-| Fri 10-30 AM | One round of weight tuning against C2; kappa and precision results | |
+| Tue 10-27 | Bare app (basic auth, noindex), Dockerfile, `render.yaml` (done) | Connect Render, set env vars |
+| Wed 10-28 AM | Extract (name candidates, infra classes, projected fields, manifest, atomic writes) and the attribution key; run on the line sample. App: artifact download from a private release (token in env), size cap check | Create the private release and fine-grained read-only token |
+| Wed midday | | **Full-file extraction run** (measures extractor throughput) and the domain-complete sample build |
+| Wed PM | Attribution, findings, scoring on the sample; ubiquitous-CVE measurement; feature-layer size vs raw. **Deploy through the real artifact-download path** with a sample artifact | Upload the sample artifact to the release |
+| Thu 10-29 AM | Tune on the sample, then **freeze weights**. Eval: C1 DNS script, blind label pool export, C4 | Run DNS script; label <= 60 accounts (< 1 h) |
+| Thu PM | App: list, detail, plays, CSV | |
+| Thu eve | | Score the full feature layer (no re-extraction); upload the full artifact (hard cap enforced) |
+| Fri 10-30 AM | Eval results (precision@15, C1, C4); fix-only changes, no weight changes | |
 | Fri PM | README write-up | Final check; submit with the credentials note |
 
-**Main risk:** the full-file artifact is too large for the free instance. Fallback: publish Tier 1-2
-accounts with full evidence, plus counts for the rest.
+**Throughput claims:** only measured figures are quoted. The profiling pass took 754 s for 14.6M
+records on 8 cores [M]; the extractor's own throughput is measured in Wednesday's full run.
+
+**Hosted artifact hard cap: 100 MB** (NFR3). Publishing fails above it; the fallback is Tier 1-2
+accounts with full evidence plus counts for the rest.
