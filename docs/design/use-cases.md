@@ -1,6 +1,6 @@
 # Users and use cases
 
-Status: agreed 2026-10-27. Decisions D1-D8 in `docs/DECISIONS.md`.
+Status: agreed 2026-10-27, amended after step 3. Decisions D1-D8 (D2 amended) and D18 in `docs/DECISIONS.md`.
 Legend as in `DATA_NOTES.md`: **[M]** measured, **[H]** hypothesis / not yet validated.
 
 ## How B2B sales teams prospect (the model we design for)
@@ -53,8 +53,9 @@ manager, not the security team of the prospect.
 ### UC3. Run a play
 "Give me every account with problem X, and let me take the list to my CRM."
 - The same list as UC1, pivoted by finding instead of score: exposed remote access / databases,
-  EOL software, KEV-flagged potential CVEs, expired or soon-expiring certs, vulnerable edge
-  appliances (Fortinet/SonicWall/Citrix).
+  EOL software, KEV-flagged potential CVEs, expired or soon-expiring certs, exposed edge
+  appliances (Fortinet/SonicWall/Citrix: presence only, their banners rarely carry versions or
+  CVEs [M, DATA_NOTES 5b]).
 - **CSV export** of the current filtered list. This is the only hand-off to other tools (D5).
 
 ### UC4. See what's new (designed, not demoed in the MVP)
@@ -70,8 +71,8 @@ CDN/infra exclusion, so they only show that a field exists and roughly how commo
 |---|---|---|
 | Cert expiring within 30 days | `ssl.cert.expires` vs record `timestamp` | 273 of 6,262 certs in sample (4.4%); already expired 332 (5.3%) [M]. Measured against scan time, not today. |
 | Actively exploited CVE | `vulns[CVE].kev` (CISA Known Exploited Vulnerabilities flag), `ransomware_campaign` (`Known`/`Unknown`), `epss` | Not in DATA_NOTES; found 2026-10-27. 58 distinct KEV CVEs in sample. The most common is CVE-2023-44487 (HTTP/2 Rapid Reset, on most nginx). Only 647 of 2,909 vuln records have a KEV CVE besides it [M]. Near-universal CVEs need down-weighting (step 3). |
-| Recently published CVE | **Not in the file.** Records carry no publication date; the CVE-ID year is a weak proxy | CVE-2026-* make up 39k of 127k CVE hits in sample (31%), 539 distinct IDs numbered up to ~110,000 [M], which matches the "implausible IDs" note in DATA_NOTES 3. ID-year recency is unreliable until checked (step 3). |
-| Recently went end-of-life | `eol-product` tag only, **no EOL date** | 90% of tagged records are nginx [M]. "Recently" needs a static product-lifecycle reference keyed by product+version (this is reference data, not company enrichment), and version is on only 6.5% of all records [M]. Decide in step 3. |
+| Published this year (CVE-2026-*) | No publication date; the ID year is when the ID was reserved, so a CVE-2026 ID cannot predate 2026 (one-sided marker) | 39k of 127k CVE hits in sample (31%), 539 distinct IDs up to ~110,000 [M]. **Off (0 points, no marker) until a spot-check against cve.org confirms the IDs** (DATA_NOTES 5b, D2). |
+| End-of-life (not "recently") | `eol-product` tag only, **no EOL date** | 90% of tagged records are nginx; version on 6.5% of records [M]. The MVP shows "end-of-life" as a finding, not as a why-now marker (D2). |
 
 ## Evidence rules carried into requirements and scoring
 - Exclude CDN / shared-infrastructure records **before** counting any finding: identical CVE lists
@@ -80,8 +81,8 @@ CDN/infra exclusion, so they only show that a field exists and roughly how commo
 - WAF/CDN presence is a **weak** sign of security spend (a free Cloudflare plan counts).
   Enterprise security / edge gear (Fortinet, SonicWall, Citrix) is a **stronger** sign of spend,
   and is also attack surface (frequent critical CVEs).
-- Industry: a partial label from TLD and title keywords. LLM classification stays an option for
-  step 3, where its accuracy and cost would be measured; not committed.
+- Industry and display name: TLD / keyword rules in the MVP. An LLM account classifier is design
+  only, built only if time remains (D18).
 
 ## Out of scope (decided, D5)
 CRM push, external company enrichment, contact discovery, outreach drafting.

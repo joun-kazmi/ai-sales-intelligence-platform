@@ -12,16 +12,21 @@ One entry per decision: decision, options considered, why, date.
   off. Territory is not in the brief and the data supports it poorly (D4). UC4 needs two
   snapshots and we have one.
 
-## D2. "Why now" in a single snapshot (2026-10-27)
-- **Decision**: The MVP shows timing evidence from the one file: cert expiring within 30 days,
-  KEV-flagged (actively exploited) potential CVEs, and, if they pass validation in step 3,
-  recently published CVEs and recently-EOL products. Production adds `first_seen` / `last_seen`
-  per finding for "new since last scan".
+## D2. "Why now" in a single snapshot (2026-10-27, amended after step 3)
+- **Decision**: The MVP's why-now markers are: cert expiring within 30 days (+5 points) and a
+  KEV-flagged (actively exploited) potential CVE (marker only; its points count once, under
+  Exposure, D16). "Published this year" (CVE-2026-* IDs) is off, with 0 points, until a spot-check
+  against cve.org confirms the IDs; if they are real it comes back. "Recently went end-of-life"
+  is cut: the MVP shows "end-of-life" as a finding only. Production adds `first_seen` /
+  `last_seen` per finding for "new since last scan" (D11).
 - **Options**: change-over-time only (impossible with one file); simulate a second snapshot
-  (rejected as misleading); in-snapshot timing signals.
-- **Why**: These are true "act now" reasons that exist today. The record has no CVE publication
-  date, and CVE-2026-* IDs look inflated (39k of 127k hits in sample), so CVE recency stays
-  [H]. EOL recency needs a static lifecycle reference (EOL dates are not in the file).
+  (rejected as misleading); in-snapshot timing signals; CVE recency via an NVD join; an EOL
+  lifecycle table.
+- **Why**: These are true "act now" reasons that exist in the file. Records have no CVE
+  publication date. An ID's year is its reservation year, so CVE-2026 is a valid one-sided
+  marker, but 31% of CVE hits carry such IDs with numbers up to ~110,000 and they are not yet
+  verified. EOL dates are not in the file, 90% of EOL tags are nginx, and versions are on 6.5% of
+  records, so "recently EOL" would add a reference table for little coverage.
 
 ## D3. Account key and naming (2026-10-27)
 - **Decision**: The account is the registrable domain, shown with a resolution-confidence label
@@ -119,3 +124,41 @@ One entry per decision: decision, options considered, why, date.
 - **Why**: Measured on the sample: CVE-2023-44487 sits on 1,133 of 2,909 vuln records with EPSS
   ~1.0 and KEV True, so EPSS alone would *raise* it. EPSS does down-weight the 2009-2013
   Apache list repeated on 801 records (EPSS 0.007-0.14). Formula in step 3.
+
+## D15. Entity resolution (2026-10-27)
+- **Decision**: Two passes. Pass 1 picks candidate names per record (scan hostname > cert CN >
+  `http.host` > non-IP-like PTR), reduces them to registrable domains and drops infrastructure
+  domains (seeded list + "PTR embeds the IP" rule). Pass 2 assigns each IP with one surviving
+  domain, with all its records, to that account. Shared-hosting IPs (> K domains) and CDN edges
+  give tenants no findings. Confidence: High / Medium / Low by method. Details:
+  `docs/design/signals-scoring.md` section 1.
+- **Options**: per-record assignment only; `org` as the key; external enrichment.
+- **Why**: Per-record assignment loses nameless banners (RDP, DB) on named IPs. Shared and CDN
+  IPs would attribute the host's exposure to every tenant.
+
+## D16. Scoring model (2026-10-27)
+- **Decision**: Transparent additive points per finding type (Exposure 8-30, Neglect capped at
+  15, cert-expiring +5). KEV counts once, under Exposure, and also shows as a why-now marker.
+  CVE-2026 IDs score 0 until verified. Prevalence discount 0.2x above ~10% of CVE-bearing
+  accounts. No WAF/CDN discount. Fixed tier thresholds (start: T1 >= 40, T2 20-39).
+- **Options**: ML model; CVSS-sum; percentile tiers; WAF discount.
+- **Why**: No labels to train on. Every point must be explainable to a prospect. Fixed thresholds
+  keep tiers comparable across monthly files. CDN-fronted accounts are under-observed, not safe.
+
+## D17. Measurement plan (2026-10-27)
+- **Decision**: C1 forward-DNS confirmation of IP->domain links (automated, audit only) plus ~30
+  hand checks. C2 pooled labelling and precision@50 vs max-CVSS, CVE-count and random baselines
+  (headline). C3 KEV lift of a KEV-free score. C4 ±25% weight sensitivity. C5 design only. One
+  `eval` command gates scoring changes.
+- **Options**: manual audit of links; labelling only our own top-k; no baselines.
+- **Why**: DNS removes most manual checking. Pooling lets every ranking be judged on the same
+  labels. Beating "highest CVSS first" is the evidence that the signal work added value.
+
+## D18. LLM use (2026-10-27)
+- **Decision**: MVP uses one LLM: the C2 labelling assistant (`claude-opus-5-5`), measured by
+  Cohen's kappa against 60 owner labels, cost from real token usage. The account classifier is
+  design only; MVP uses TLD/keyword rules; build the LLM version only if time remains. No LLM in
+  scoring; never raw banners to a model.
+- **Options**: labelling assistant + classifier; classifier only; no LLM.
+- **Why**: One well-measured use answers "how you know it's right and what it costs". The
+  classifier adds build and evaluation work before Friday.
