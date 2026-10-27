@@ -80,6 +80,7 @@ def create_app() -> FastAPI:
         path = Path(local) if local else (download(artifact_cfg) if artifact_cfg else None)
         app.state.store = Store(path) if path else None
         app.state.manifest = app.state.store.manifest() if path else {}
+        app.state.summary = app.state.store.summary() if path else {}
         yield
 
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
@@ -125,8 +126,10 @@ def create_app() -> FastAPI:
         total = s.count(f)
         pages = max(1, math.ceil(total / 50))
         page = min(page, pages)
+        rows = s.page(f, page)
         return templates.TemplateResponse(request, "list.html", {
-            "m": request.app.state.manifest, "rows": s.page(f, page), "total": total, "page": page,
+            "m": request.app.state.manifest, "sm": request.app.state.summary, "rows": rows,
+            "tags": s.tags([a["domain"] for a in rows]), "total": total, "page": page,
             "pages": pages, "f": f.__dict__, "play": f.play, "plays": PLAYS, "options": OPTIONS,
             "why_text": WHY_NOW_TEXT, "export_qs": urlencode(f.query()),
             "prev_qs": urlencode(f.query(page=page - 1)), "next_qs": urlencode(f.query(page=page + 1)),
@@ -144,12 +147,12 @@ def create_app() -> FastAPI:
             ("Facts (0 points; for plays and filters)", [x for x in findings if x["family"] == "fact"]),
         ]
         return templates.TemplateResponse(request, "account.html", {
-            "m": request.app.state.manifest, "a": a, "sections": sections, "source_text": SOURCE_TEXT})
+            "m": request.app.state.manifest, "sm": request.app.state.summary, "a": a, "sections": sections, "source_text": SOURCE_TEXT})
 
     @app.get("/plays", response_class=HTMLResponse)
     def plays(request: Request) -> Response:
         return templates.TemplateResponse(request, "plays.html", {
-            "m": request.app.state.manifest, "plays": PLAYS, "counts": store(request).play_counts()})
+            "m": request.app.state.manifest, "sm": request.app.state.summary, "plays": PLAYS, "counts": store(request).play_counts()})
 
     @app.get("/export.csv")
     def export(request: Request) -> StreamingResponse:

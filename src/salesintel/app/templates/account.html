@@ -1,39 +1,52 @@
 {% extends "base.html" %}
 {% block title %}{{ a.domain }}{% endblock %}
 {% block content %}
-<h2>{{ a.domain }}</h2>
-<p>
-  Score <b>{{ a.score }}</b> · Tier <span class="tier t{{ a.tier }}">{{ a.tier if a.tier else "–" }}</span>
-  · rank {{ a.rank }} · link confidence {{ a.attribution_label }}
-  · {{ a.eligibility.replace("_", " ") }}{% if a.eligibility_reason %} ({{ a.eligibility_reason }}){% endif %}
-  · {{ a.n_ips }} IPs, {{ a.n_records }} records
-</p>
+<p class="muted"><a href="/">← Ranked list</a></p>
+<div class="head">
+  <h2>{{ a.domain }}</h2>
+  <span class="tier t{{ a.tier }}">{{ ("Tier " ~ a.tier) if a.tier else "Not ranked" }}</span>
+  <div class="score" style="width: 220px"><b>{{ a.score }}</b><div class="bar t{{ a.tier }}"><i style="width: {{ [a.score, 95] | min * 100 // 95 }}%"></i></div></div>
+</div>
+<div class="facts">
+  <div class="fact"><span>Rank</span>{{ a.rank }}</div>
+  <div class="fact"><span>Link confidence</span>{{ a.attribution_label }}</div>
+  <div class="fact"><span>Prospect</span><span class="label {{ a.eligibility }}" style="display:inline;text-transform:none;letter-spacing:0;font-size:13px">{{ a.eligibility.replace("_", " ") }}</span>{% if a.eligibility_reason %} · {{ a.eligibility_reason }}{% endif %}</div>
+  <div class="fact"><span>Footprint</span>{{ a.n_ips }} IPs · {{ a.n_records }} records</div>
+</div>
 <h3>Score breakdown</h3>
-<table style="width:auto">
-  <tr><td>Exposure</td><td class="num">{{ a.exposure_points }}</td></tr>
-  <tr><td>Software</td><td class="num">{{ a.software_points }}</td></tr>
-  <tr><td>Neglect</td><td class="num">{{ a.neglect_points }}</td></tr>
-  <tr><th>Total</th><th class="num">{{ a.exposure_points + a.software_points + a.neglect_points }}</th></tr>
-</table>
+{% set total = [a.exposure_points + a.software_points + a.neglect_points, 1] | max %}
+<div class="stack">
+  <div class="exposure" style="width: {{ a.exposure_points * 100 // 95 }}%"></div>
+  <div class="software" style="width: {{ a.software_points * 100 // 95 }}%"></div>
+  <div class="neglect" style="width: {{ a.neglect_points * 100 // 95 }}%"></div>
+</div>
+<div class="legend">
+  <span><i class="dot" style="background:var(--exp)"></i>Exposure {{ a.exposure_points }}</span>
+  <span><i class="dot" style="background:#e2962b"></i>Software {{ a.software_points }}</span>
+  <span><i class="dot" style="background:#94a0b2"></i>Neglect {{ a.neglect_points }}</span>
+  <span><b>Total {{ a.exposure_points + a.software_points + a.neglect_points }}</b> of 95 possible</span>
+</div>
 {% for title, items in sections %}
 <h3>{{ title }}</h3>
 {% if items %}
+<div class="card">
 <table>
-  <thead><tr><th>Points</th><th>Finding</th><th>Where</th><th>Software</th><th>CVEs</th><th>Linked by</th><th>Observed</th></tr></thead>
+  <thead><tr><th class="num">Points</th><th>Finding</th><th>Where</th><th>Software</th><th>CVEs</th><th>Linked by</th><th>Observed</th></tr></thead>
   <tbody>
   {% for x in items %}
   <tr>
-    <td class="num">{{ x.points }}</td>
-    <td>{{ x.sentence }}</td>
+    <td class="num"><b>{{ x.points }}</b></td>
+    <td><span class="tag {{ x.family }}">{{ x.family.replace("_", " ") }}</span> {{ x.sentence }}</td>
     <td>{% if x.ip %}{{ x.ip }}:{{ x.port }}{% if x.module %}<br><span class="muted">{{ x.module }}</span>{% endif %}{% endif %}</td>
     <td>{{ [x.product, x.version] | select | join(" ") }}</td>
-    <td>{% for c in x.cves %}<div>{{ c.cve }}{% if c.cvss is not none %} · CVSS {{ c.cvss }}{% endif %}{% if c.epss is not none %} · EPSS {{ "%.2f" | format(c.epss) }}{% endif %}{% if c.kev %} · <span class="tag why">KEV</span>{% endif %} · <span class="tag">{{ "verified" if c.verified else "potential" }}</span></div>{% endfor %}</td>
-    <td>{% if x.attribution == "via_ip" %}same IP as a named record{% else %}{{ source_text.get(x.source, x.source) }}{% endif %}</td>
-    <td class="muted">{{ (x.observed_at or "")[:16] }}</td>
+    <td>{% for c in x.cves %}<div class="cve">{{ c.cve }}{% if c.cvss is not none %} · CVSS {{ c.cvss }}{% endif %}{% if c.epss is not none %} · EPSS {{ "%.2f" | format(c.epss) }}{% endif %}{% if c.kev %} <span class="tag why">KEV</span>{% endif %} <span class="tag">{{ "verified" if c.verified else "potential" }}</span></div>{% endfor %}</td>
+    <td class="muted">{% if x.attribution == "via_ip" %}same IP as a named record{% else %}{{ source_text.get(x.source, x.source) }}{% endif %}</td>
+    <td class="muted">{{ (x.observed_at or "")[:16].replace("T", " ") }}</td>
   </tr>
   {% endfor %}
   </tbody>
 </table>
+</div>
 {% else %}<p class="muted">None.</p>{% endif %}
 {% endfor %}
 {% endblock %}

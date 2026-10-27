@@ -112,3 +112,21 @@ def test_app_connection_is_capped_for_the_free_tier(client):
     settings = dict(con.execute(
         "SELECT name, value FROM duckdb_settings() WHERE name IN ('memory_limit', 'threads')").fetchall())
     assert settings == {"memory_limit": "256.0 MiB", "threads": "2"}
+
+
+def test_summary_strip_counts(client):
+    cur = client.app.state.store.con.cursor()
+    t1 = cur.execute("SELECT count(*) FROM accounts WHERE tier = 1 AND eligibility != 'likely_non_prospect'").fetchone()[0]
+    body = client.get("/plays", auth=AUTH).text
+    assert f"<b>{t1:,}</b><span>Tier 1 accounts</span>" in body
+    assert "Scoring config" in body
+
+
+def test_short_tags_and_score_bar(client):
+    body = client.get("/", auth=AUTH).text
+    assert ">RDP exposed<" in body and "nginx 1.18.0 · KEV · EOL" in body
+    assert 'title="Exposed Remote Desktop (RDP)' in body  # full sentence on hover
+    widths = [int(w) for w in __import__("re").findall(r'style="width: (\d+)%"', body)]
+    assert widths and all(0 <= w <= 100 for w in widths)
+    hostile = "".join(client.get(f"/?tier=all&page={p}", auth=AUTH).text for p in (1, 2))
+    assert "<script>alert(1)" not in hostile and "&lt;script&gt;" in hostile  # tag labels and titles escaped

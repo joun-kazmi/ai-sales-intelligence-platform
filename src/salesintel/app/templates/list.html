@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{% if play %}{{ plays[play][0] }}{% else %}Ranked list{% endif %}{% endblock %}
-{% block navextra %}<a href="/export.csv?{{ export_qs }}">Export this view (CSV)</a>{% endblock %}
+{% block nav_list %}on{% endblock %}
 {% block content %}
 {% if play %}<h2>{{ plays[play][0] }}</h2><p class="muted">Who to call: {{ plays[play][1] }}</p>{% endif %}
 <form class="filters" method="get" action="/">
@@ -12,28 +12,31 @@
   </label>
   {% endfor %}
   <button type="submit">Apply</button>
+  <a class="export" href="/export.csv?{{ export_qs }}">Export this view (CSV)</a>
 </form>
-<p class="muted">{{ total }} accounts · page {{ page }} of {{ pages }}</p>
+<p class="muted">{{ "{:,}".format(total) }} accounts · page {{ page }} of {{ pages }}</p>
+<div class="card">
 <table>
-  <thead><tr><th>#</th><th>Account</th><th>Score</th><th>Tier</th><th>Top reasons</th><th>Why now</th><th>Link</th><th>Prospect</th><th>IPs</th></tr></thead>
+  <thead><tr><th>Rank</th><th>Account</th><th>Tier</th><th>Score</th><th>Why it ranks</th><th>Why now</th><th>Link</th><th>Prospect</th><th class="num">IPs</th></tr></thead>
   <tbody>
   {% for a in rows %}
   <tr>
-    <td class="num">{{ a.rank }}</td>
-    <td><a href="/account/{{ a.domain | urlencode }}">{{ a.domain }}</a></td>
-    <td class="num">{{ a.score }}</td>
-    <td><span class="tier t{{ a.tier }}">{{ a.tier if a.tier else "–" }}</span></td>
-    <td>{% if a.reasons %}<ul class="reasons">{% for r in a.reasons %}<li>{{ r }}</li>{% endfor %}</ul>{% else %}<span class="muted">no scored findings</span>{% endif %}</td>
-    <td>{% for w in a.why_now %}<span class="tag why">{{ why_text.get(w, w) }}</span>{% endfor %}</td>
-    <td>{{ a.attribution_label }}</td>
-    <td>{{ a.eligibility.replace("_", " ") }}{% if a.eligibility_reason %}<br><span class="muted">{{ a.eligibility_reason }}</span>{% endif %}</td>
+    <td class="num muted">{{ a.rank }}</td>
+    <td><a class="domain" href="/account/{{ a.domain | urlencode }}">{{ a.domain }}</a></td>
+    <td><span class="tier t{{ a.tier }}">{{ ("T" ~ a.tier) if a.tier else "–" }}</span></td>
+    <td><div class="score"><b>{{ a.score }}</b><div class="bar t{{ a.tier }}"><i style="width: {{ [a.score, 95] | min * 100 // 95 }}%"></i></div></div></td>
+    <td>{% set ts = tags.get(a.domain, []) %}{% if ts %}<div class="tags">{% for t in ts[:5] %}<span class="tag {{ t.family }}" title="{{ t.sentence }}">{{ t.label }}</span>{% endfor %}{% if ts | length > 5 %}<span class="tag">+{{ ts | length - 5 }}</span>{% endif %}</div>{% else %}<span class="muted">no scored findings</span>{% endif %}</td>
+    <td><div class="tags">{% for w in a.why_now %}<span class="tag why">{{ why_text.get(w, w) }}</span>{% endfor %}</div></td>
+    <td class="muted">{{ a.attribution_label }}</td>
+    <td><span class="label {{ a.eligibility }}">{{ a.eligibility.replace("_", " ") }}</span>{% if a.eligibility_reason %}<br><span class="muted">{{ a.eligibility_reason }}</span>{% endif %}</td>
     <td class="num">{{ a.n_ips }}</td>
   </tr>
   {% endfor %}
   </tbody>
 </table>
-<p>
-{% if page > 1 %}<a href="/?{{ prev_qs }}">← previous</a>{% endif %}
-{% if page < pages %}<a href="/?{{ next_qs }}">next →</a>{% endif %}
-</p>
+</div>
+<div class="pager">
+<span>{% if page > 1 %}<a href="/?{{ prev_qs }}">← Previous</a>{% endif %}</span>
+<span>{% if page < pages %}<a href="/?{{ next_qs }}">Next →</a>{% endif %}</span>
+</div>
 {% endblock %}

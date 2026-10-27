@@ -1,7 +1,7 @@
 # UI spec (MVP)
 
 Status: approved 2026-10-28 (incl. Jinja2 and the end-of-life sentence match as a known MVP shortcut);
-built on `feature/ui` 2026-10-28. `ARTIFACT_PATH` serves a local artifact without the release download (local runs, tests). Plain server-rendered HTML tables (D21: UI
+built on `feature/ui` 2026-10-28; CSS-only polish on `feature/ui-polish` (tier badges, score bars, short reason tags with the full sentence on hover, header summary strip, sticky filter bar; no JavaScript, no data changes). Screenshots in `docs/screenshots/` come from a synthetic demo artifact (`scripts/demo_artifact.py`, `.example` domains, documentation IPs) so no real organisation is named in git (NFR5). `ARTIFACT_PATH` serves a local artifact without the release download (local runs, tests). Plain server-rendered HTML tables (D21: UI
 polish is out of scope). Reads only the artifact tables `accounts`, `findings`, `manifest`.
 
 ## Rules for every page

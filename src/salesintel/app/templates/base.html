@@ -4,44 +4,110 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>{% block title %}Accounts{% endblock %} · Sales intelligence</title>
+<title>{% block title %}Accounts{% endblock %} · Attack surface prospects</title>
 <style>
-  body { font: 14px/1.45 system-ui, sans-serif; margin: 0; color: #1d2430; background: #fff; }
-  header { padding: 12px 20px; border-bottom: 1px solid #dde2ea; background: #f6f8fb; }
-  header h1 { font-size: 17px; margin: 0 0 4px; }
-  header .meta { color: #5a6577; font-size: 12px; }
-  nav a { margin-right: 14px; }
-  main { padding: 16px 20px; max-width: 1400px; }
+  :root {
+    --ink: #17202c; --muted: #5d6878; --line: #e3e7ee; --bg: #f5f7fa; --card: #ffffff;
+    --accent: #2457c5; --t1: #c2362b; --t1-bg: #fbe4e1; --t2: #b4690e; --t2-bg: #fdf0d9;
+    --t3: #456; --t3-bg: #e9eef5; --exp: #c2362b; --sw: #b4690e; --neg: #5d6878; --why: #8a5a00;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 -apple-system, "Segoe UI", Inter, system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Header and summary strip */
+  .top { background: #0f1b2d; color: #e8edf5; }
+  .top .inner { max-width: 1280px; margin: 0 auto; padding: 14px 24px 0; display: flex; align-items: baseline; gap: 28px; }
+  .brand { font-weight: 700; font-size: 16px; letter-spacing: .2px; }
+  .brand small { display: block; font-weight: 400; font-size: 12px; color: #9fb0c8; }
+  .top nav a { color: #c9d6ea; margin-right: 18px; font-weight: 500; padding-bottom: 10px; display: inline-block; border-bottom: 2px solid transparent; }
+  .top nav a.on, .top nav a:hover { color: #fff; border-color: #6e9bff; text-decoration: none; }
+  .strip { max-width: 1280px; margin: 0 auto; padding: 10px 24px 14px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .stat { background: #182740; border: 1px solid #24365a; border-radius: 8px; padding: 6px 12px; min-width: 120px; }
+  .stat b { display: block; font-size: 18px; color: #fff; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 11px; color: #9fb0c8; text-transform: uppercase; letter-spacing: .5px; }
+  .stat.s1 b { color: #ff8f84; } .stat.s2 b { color: #ffc76b; }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 18px 24px 40px; }
+  .note { color: var(--muted); font-size: 12.5px; margin: 0 0 14px; }
+  h2 { font-size: 20px; margin: 4px 0 6px; }
+  h3 { font-size: 15px; margin: 22px 0 8px; }
+  .muted { color: var(--muted); font-size: 12px; }
+
+  /* Sticky filter bar */
+  form.filters { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 12px; align-items: end;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+  form.filters label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; display: flex; flex-direction: column; gap: 3px; }
+  form.filters select { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid #cfd6e1; border-radius: 6px; background: #fff; min-width: 120px; max-width: 230px; }
+  form.filters button { font: inherit; font-weight: 600; padding: 6px 16px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; }
+  form.filters .export { margin-left: auto; align-self: center; font-size: 13px; }
+
+  /* Tables */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
   table { border-collapse: collapse; width: 100%; }
-  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid #e6e9ef; }
-  th { font-size: 12px; color: #5a6577; font-weight: 600; }
-  td.num { text-align: right; white-space: nowrap; }
-  .tier { display: inline-block; min-width: 18px; text-align: center; border-radius: 3px; padding: 0 4px; font-weight: 600; }
-  .t1 { background: #f8d7d3; } .t2 { background: #fbe9c6; } .t3 { background: #e7ecf3; } .t0 { background: #f1f1f1; color: #777; }
-  .tag { display: inline-block; font-size: 11px; padding: 0 5px; border-radius: 3px; background: #eef1f6; margin: 1px 2px 1px 0; }
-  .why { background: #fff0d9; }
-  .muted { color: #6b7587; font-size: 12px; }
-  form.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 12px; }
-  form.filters label { font-size: 12px; color: #5a6577; display: flex; flex-direction: column; }
-  ul.reasons { margin: 0; padding-left: 16px; }
-  .note { background: #f6f8fb; border-left: 3px solid #9fb0c8; padding: 6px 10px; margin: 8px 0 14px; font-size: 13px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; background: #fafbfd; }
+  tbody tr:hover { background: #f8faff; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .domain { font-weight: 600; }
+
+  /* Tier badges and score bar */
+  .tier { display: inline-block; min-width: 30px; text-align: center; border-radius: 999px; padding: 1px 8px; font-weight: 700; font-size: 12px; }
+  .t1 { background: var(--t1-bg); color: var(--t1); } .t2 { background: var(--t2-bg); color: var(--t2); }
+  .t3 { background: var(--t3-bg); color: var(--t3); } .t0 { background: #f0f1f3; color: #8a929e; }
+  .score { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+  .score b { width: 24px; text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; height: 6px; background: #e9edf3; border-radius: 999px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; background: #8aa4cf; }
+  .bar.t1 i { background: var(--t1); } .bar.t2 i { background: #e2962b; } .bar.t3 i { background: #8aa4cf; }
+
+  /* Tags */
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { display: inline-block; font-size: 11.5px; line-height: 18px; padding: 0 7px; border-radius: 4px; background: #eef1f6; color: #33404f; white-space: nowrap; }
+  .tag.exposure { background: #fbe4e1; color: #9d2a21; } .tag.software { background: #fdf0d9; color: #8a5300; }
+  .tag.neglect { background: #eef1f6; color: #4a5566; } .tag.why { background: #fff4dc; color: var(--why); border: 1px solid #f3dca8; }
+  .label { font-size: 12px; } .label.likely_org { color: #1f7a45; } .label.likely_non_prospect { color: #9d2a21; }
+
+  /* Account page */
+  .head { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin-bottom: 6px; }
+  .head h2 { margin: 0; }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+  .fact { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-size: 13px; }
+  .fact span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  .stack { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: #e9edf3; max-width: 520px; margin: 6px 0; }
+  .stack .exposure { background: var(--exp); } .stack .software { background: #e2962b; } .stack .neglect { background: #94a0b2; }
+  .legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--muted); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .cve { white-space: nowrap; font-size: 12.5px; }
+
+  /* Plays */
+  .plays { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .play { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .play h4 { margin: 0 0 4px; font-size: 15px; } .play .n { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pager { display: flex; justify-content: space-between; margin-top: 12px; font-size: 13px; }
 </style>
 </head>
 <body>
-<header>
-  <h1>Research priority for external attack surface / vulnerability management</h1>
-  <nav><a href="/">Ranked list</a><a href="/plays">Plays</a>{% block navextra %}{% endblock %}</nav>
-  <div class="meta">
-    Snapshot {{ m.get("snapshot_from", "")[:16] }} to {{ m.get("snapshot_to", "")[:16] }} UTC
-    · source {{ m.get("input_file", "") }} ({{ m.get("input_sha256", "")[:12] }})
-    · scoring config {{ m.get("scoring_config_version", "") }}
-    · {{ m.get("accounts", "") }} accounts
+<div class="top">
+  <div class="inner">
+    <div class="brand">Attack surface prospects<small>Research priority for external attack surface / vulnerability management</small></div>
+    <nav><a href="/" class="{% block nav_list %}{% endblock %}">Ranked list</a><a href="/plays" class="{% block nav_plays %}{% endblock %}">Plays</a></nav>
   </div>
-</header>
+  <div class="strip">
+    <div class="stat s1"><b>{{ "{:,}".format(sm.get("tier1", 0)) }}</b><span>Tier 1 accounts</span></div>
+    <div class="stat s2"><b>{{ "{:,}".format(sm.get("tier2", 0)) }}</b><span>Tier 2 accounts</span></div>
+    <div class="stat"><b>{{ "{:,}".format(sm.get("ranked", 0)) }}</b><span>Ranked (default view)</span></div>
+    <div class="stat"><b>{{ m.get("snapshot_from", "")[:10] }} → {{ m.get("snapshot_to", "")[:10] }}</b><span>Scan snapshot (UTC)</span></div>
+    <div class="stat"><b>{{ m.get("scoring_config_version", "") }}</b><span>Scoring config</span></div>
+  </div>
+</div>
 <main>
-<p class="note">Evidence comes from one Shodan scan. "Potential" CVEs are matched from the version a
-banner reports, not verified on the host; "verified" ones were confirmed by Shodan. A score is a
-research priority, not a breach probability.</p>
+<p class="note">Evidence from one Shodan scan ({{ m.get("input_file", "") }}, sha256 {{ m.get("input_sha256", "")[:12] }}). "Potential" CVEs are matched from
+the version a banner reports, not verified on the host; "verified" ones were confirmed by Shodan. The score is a
+research priority, not a breach probability. Likely non-prospects are hidden unless you ask for them.</p>
 {% block content %}{% endblock %}
 </main>
 </body>
