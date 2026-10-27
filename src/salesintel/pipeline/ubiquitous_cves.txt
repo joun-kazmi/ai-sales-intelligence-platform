@@ -1,0 +1,60 @@
+# Ubiquitous CVEs (D26, D47): award 0 points and trigger no why-now marker.
+# Rule: the CVE matches >= 90% of the observed CVE-bearing versions of a product with >= 50
+# attributed accounts (version-independent: says only 'runs this product'), measured on the
+# domain-complete sample (features bcd01d2d7818, blocklist faf9761a45c4), 2026-10-27.
+# Plus CVE-2023-44487 (provisional, D26; on 61% of nginx accounts). One CVE per line.
+CVE-2023-44487
+CVE-2007-2768  # OpenSSH, 23/23 versions
+CVE-2007-4723  # Apache httpd, 63/65 versions
+CVE-2008-3844  # OpenSSH, 23/23 versions
+CVE-2009-0796  # Apache httpd, 63/65 versions
+CVE-2009-2299  # Apache httpd, 63/65 versions
+CVE-2011-1176  # Apache httpd, 63/65 versions
+CVE-2011-2688  # Apache httpd, 63/65 versions
+CVE-2012-3526  # Apache httpd, 63/65 versions
+CVE-2012-4001  # Apache httpd, 63/65 versions
+CVE-2012-4360  # Apache httpd, 63/65 versions
+CVE-2013-0941  # Apache httpd, 63/65 versions
+CVE-2013-0942  # Apache httpd, 63/65 versions
+CVE-2013-2765  # Apache httpd, 63/65 versions
+CVE-2013-4365  # Apache httpd, 63/65 versions
+CVE-2023-51767  # OpenSSH, 23/23 versions
+CVE-2025-58098  # Apache httpd, 59/65 versions
+CVE-2026-106552  # OpenSSH, 23/23 versions
+CVE-2026-106553  # OpenSSH, 23/23 versions
+CVE-2026-106555  # OpenSSH, 23/23 versions
+CVE-2026-106582  # OpenSSH, 23/23 versions
+CVE-2026-106583  # OpenSSH, 23/23 versions
+CVE-2026-106584  # OpenSSH, 23/23 versions
+CVE-2026-106585  # OpenSSH, 23/23 versions
+CVE-2026-106586  # OpenSSH, 23/23 versions
+CVE-2026-106587  # OpenSSH, 23/23 versions
+CVE-2026-24072  # Apache httpd, 60/65 versions
+CVE-2026-28780  # Apache httpd, 60/65 versions
+CVE-2026-29169  # Apache httpd, 60/65 versions
+CVE-2026-29170  # Apache httpd, 61/65 versions
+CVE-2026-33006  # Apache httpd, 60/65 versions
+CVE-2026-33857  # Apache httpd, 60/65 versions
+CVE-2026-34032  # Apache httpd, 60/65 versions
+CVE-2026-34059  # Apache httpd, 60/65 versions
+CVE-2026-35385  # OpenSSH, 21/23 versions
+CVE-2026-35387  # OpenSSH, 21/23 versions
+CVE-2026-35388  # OpenSSH, 21/23 versions
+CVE-2026-35414  # OpenSSH, 21/23 versions
+CVE-2026-42535  # Apache httpd, 61/65 versions
+CVE-2026-59995  # OpenSSH, 22/23 versions
+CVE-2026-59996  # OpenSSH, 22/23 versions
+CVE-2026-59997  # OpenSSH, 22/23 versions
+CVE-2026-59998  # OpenSSH, 22/23 versions
+CVE-2026-59999  # OpenSSH, 22/23 versions
+CVE-2026-60000  # OpenSSH, 22/23 versions
+CVE-2026-60001  # OpenSSH, 22/23 versions
+CVE-2026-60002  # OpenSSH, 22/23 versions
+CVE-2026-73281  # OpenSSH, 22/23 versions
+CVE-2026-73282  # OpenSSH, 22/23 versions
+CVE-2026-73283  # OpenSSH, 22/23 versions
+CVE-2026-93546  # Apache httpd, 62/65 versions
+CVE-2026-94054  # Exim smtpd, 15/15 versions
+CVE-2026-94055  # Exim smtpd, 15/15 versions
+CVE-2026-94056  # Exim smtpd, 15/15 versions
+CVE-2026-94057  # Exim smtpd, 15/15 versions

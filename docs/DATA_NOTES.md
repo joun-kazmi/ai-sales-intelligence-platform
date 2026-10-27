@@ -147,6 +147,27 @@ extractor v1, blocklist `faf9761a45c4`, 2026-10-27:
   308,034 records (59%) as CDN edge without a name: every record of a sampled CDN edge IP was
   included. Fixed in the builder (D46); the rebuilt sample should hold ~213k records [H].
 
+**Domain-complete sample scored [M]** (sandbox, 2026-10-27; features `bcd01d2d7818` from the
+first, unfiltered sample build; the 17,663 blake2b-sampled domains only unless stated):
+- Attribution funnel (all 206,817 kept rows): direct 201,473 (CDN-edge naming a domain 95,322,
+  cloud / hosting 63,183, customer or ISP 42,968); via-IP 1,532 (311 domains); unresolved 3,812
+  (3,384 on cloud / hosting IPs, 428 on IPs with 2+ domains).
+- CVE prevalence after attribution (3,961 CVE-bearing accounts): no gap; 42 CVEs on > 30%, 89 on
+  > 20%. Version-independent CVEs (>= 90% of a product's observed versions): 54 (D47).
+  CVE-2023-44487 is on 61% of nginx accounts with a version; CVE-2024-38475 (KEV) on 58% of
+  Apache accounts.
+- Shodan's `eol-product` for nginx is consistent: every branch older than 1.30 is tagged (1.30
+  stable and 1.31 mainline are current in this snapshot), 0% for 1.30.x / 1.31.x.
+- Scores: Tier 1 306 (1.7%), Tier 2 1,710, Tier 3 6,935, not ranked 8,712; ranked median 5,
+  p90 32, p99 60, max 95. Tier 1 drivers: exposure only 225, software >= 30 only 41, both 40.
+  Exposed services by module: rdp 220, mysql 100, smb 20, telnet 14, dnp3 10, postgresql 9.
+- Eligibility: uncertain 72%; likely org: public web property 2,725, cert O 1,071, own network
+  459, institutional 116; likely non-prospect: hoster customer servers 162, PTR zone 177,
+  dynamic DNS 157, residential 137, parked 2. Default Tier 1 view after the hoster rule: 248,
+  8 of them with 50+ IPs.
+- Scoring run: 20 s, peak RSS 1.2 GB, artifact 4.7 MB for 37,831 accounts (incl. partial
+  accounts of non-sampled domains on shared IPs). Two runs give identical artifacts.
+
 ## 6. Recommended pipeline implications (superseded by `docs/DECISIONS.md`)
 1. Pre-filter: drop `tags` in (`honeypot`), modules in noise list, and records whose org class is CDN/ISP *and* whose only names are PTR names.
 2. Build a company table keyed by registrable domain (use a public-suffix list), attach all IPs/ports/signals, dedupe CVEs per product, not per record.

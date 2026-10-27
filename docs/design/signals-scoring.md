@@ -25,7 +25,7 @@ owner, often the hoster, and produced most ISP false positives (DATA_NOTES 4b).
 
 **Attribution of each kept record:**
 - **direct**: the record itself names the domain (any source above). Findings count. Tagged with
-  the source.
+  the source. A record naming several domains belongs to its first (highest-priority) one (D48).
 - **via-IP**: the record names no domain, the IP has **exactly one** domain across its direct
   records, and the IP's org is neither CDN nor cloud / hosting. Findings count, tagged via-IP.
 - **unresolved**: a nameless record on an IP with 2+ domains, or on a cloud / hosting IP. Not
@@ -53,9 +53,12 @@ hides **likely non-prospect**. It never changes the research-priority score.
 
 | Label | Rules (first match wins) |
 |---|---|
-| Likely non-prospect | Hoster or ISP domain that survived the blocklist (its PTR names embed IPs, or it names hosts across many unrelated orgs); dynamic DNS suffix (e.g. `duckdns.org`, `no-ip.*`, `ddns.net`, `dyndns.*`, `synology.me`, `myfritz.net`); personal / consumer (residential ISP PTR, consumer NAS or router as the only service); parked (title or server of a parking page, "domain for sale") |
-| Likely org | Institutional TLD (`.edu`, `.gov`, `.mil`, `.ac.*`, `.bank`); cert `O` that is not a vendor default; branded title that passes the name filter; linked through the scan hostname |
+| Likely non-prospect | Dynamic DNS suffix (`duckdns.org`, `no-ip.*`, `ddns.net`, `synology.me`, `myfritz.net`, ...); parked (every title is a parking page); **hosting provider's customer servers** (5+ IPs and at least half of the account's own hostnames are numbered, e.g. `s1760765.<hoster>`); reverse-DNS zone (named only by PTR, 5+ IPs, and no IP's org matches the domain); residential / consumer (named only by PTR on a residential or mobile network) |
+| Likely org | Institutional TLD (`.edu`, `.gov`, `.mil`, `.ac.uk`, `.gov.uk`, ...); operates its own network (the domain's name appears in its IPs' org, e.g. walmart.com on "Wal-Mart Stores"); cert `O` that is not a vendor default; linked through the scan hostname (a public web property) |
 | Uncertain | Everything else |
+
+Thresholds and lists live in `src/salesintel/pipeline/scoring.toml`. Measured on the sample: 72%
+of accounts stay "uncertain"; the rules only settle the clear cases (DATA_NOTES 5c).
 
 ## 2. Signals and points
 Points count once per finding type per account unless stated. Evidence wording for CVEs:
@@ -74,11 +77,13 @@ sample [M]) is labelled **verified** instead of "potential" (D35). Points are th
 | Why-now markers, 0 points | Potential known-exploited CVE; CVE published in 2026 (CVE-2026-* ID); cert expires within 30 days of the scan | shown, not scored |
 
 Rules:
-- **Ubiquitous CVEs.** CVEs on a documented ubiquitous-CVE list award 0. Provisional list:
-  CVE-2023-44487 (HTTP/2 Rapid Reset; EPSS ~1.0, KEV, on 1,133 of 2,909 vuln records in the line
-  sample [M]). On Wednesday, after attribution works, measure each CVE's share of attributed
-  CVE-bearing accounts: if only CVE-2023-44487 stands out, the list stays as is; otherwise extend
-  it with the measured outliers and record them in DATA_NOTES. (Replaces the 10% rule, D26.)
+- **Ubiquitous CVEs** (D26, D47) award 0 and trigger no marker. The documented list is
+  `src/salesintel/pipeline/ubiquitous_cves.txt`: every CVE that matches >= 90% of the observed
+  CVE-bearing versions of a product with >= 50 attributed accounts (version-independent: it only
+  says "runs this product"), measured on the domain-complete sample (54 CVEs: the 2009-2013
+  Apache module list, the newest CVE-2026 Apache / OpenSSH batch), plus CVE-2023-44487
+  (provisional; on 61% of nginx accounts). A share-of-accounts cut-off was rejected: prevalence
+  falls smoothly and the prevalent CVEs that award points are mostly real patch lag.
 - **CVE-2026-\* IDs** are scored like any other CVE, from the record's own CVSS / EPSS / KEV
   (spot-checked as genuine, DATA_NOTES 5b, D42). They also show a 0-point why-now marker,
   "CVE published in 2026" (the ID year is the reservation year, so it cannot predate 2026).

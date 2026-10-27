@@ -419,3 +419,29 @@ One entry per decision: decision, options considered, why, date.
   edge records on sampled edge IPs, which the extractor drops anyway. Calling `project()` keeps
   the two rule sets identical by construction. The 2^27 window is the default decoder limit,
   so readers need no flags.
+
+## D47. Ubiquitous-CVE list: version-independent CVEs (2026-10-27)
+- **Decision**: The ubiquitous-CVE list (award 0, no marker) is every CVE that matches >= 90% of
+  the observed CVE-bearing versions of a product with >= 50 attributed accounts, measured on the
+  domain-complete sample (54 CVEs), plus CVE-2023-44487 (provisional). The list is a versioned
+  file (`ubiquitous_cves.txt`) folded into the scoring config version.
+- **Options**: CVE-2023-44487 only (D26 provisional); a share-of-accounts cut-off (e.g. 20%).
+- **Why**: Measured after attribution: CVE-2023-44487 is not the only everywhere-CVE (the
+  2009-2013 Apache module list sits on 39% of CVE-bearing accounts, the CVE-2026 Apache batch on
+  33%+). But prevalence falls smoothly with no gap, and many prevalent CVEs that award points
+  are real patch lag (CVE-2024-38475, KEV, on 58% of Apache accounts). A version-independent CVE
+  says only "runs Apache"; a version-dependent one says "is behind on patches". Open: whether
+  CVE-2023-44487 (61% of nginx accounts) stays on the list, since CVE-2024-38475 is similar and
+  scores.
+
+## D48. Attribution to the primary name; hoster eligibility rule (2026-10-27)
+- **Decision**: A record naming several domains belongs to its first (highest-priority) name.
+  Eligibility adds a "hosting provider's customer servers" rule (5+ IPs, at least half the
+  account's own hostnames numbered) ahead of the likely-org rules, and "operates its own
+  network" (domain name found in its IPs' org) as a likely-org rule.
+- **Options**: attribute a record to every name it carries; leave hosters to the human eval.
+- **Why**: Counting one banner under several accounts would double-count evidence. On the sample
+  the top-ranked accounts were VPS providers whose own domain names hundreds of numbered customer
+  servers (e.g. 750 IPs, 97% numbered hostnames); they own their network, so the org-match rule
+  alone marked them likely-org. The hoster rule moved 28 of them out of the default Tier 1 view
+  (276 -> 248).

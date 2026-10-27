@@ -1,0 +1,75 @@
+# Scoring config (signals-scoring.md section 2, D25, D36, D38). Versioned: the artifact manifest
+# records sha256 of this file. Weights are frozen before labelling (D28, D37).
+
+[tiers]
+tier1 = 45
+tier2 = 25  # tier 3 is 1 .. tier2-1; 0 = not ranked
+
+[points]
+exposed_service = 45
+cve_kev = 25
+cve_likely = 15        # EPSS >= likely_epss and CVSS >= likely_cvss
+eol_product = 15
+per_product_cap = 30
+eol_os = 5
+software_cap = 40
+cert_expired = 5
+deprecated_tls = 3
+self_signed_public = 3
+version_disclosed = 2
+no_hsts = 2
+neglect_cap = 10
+
+[thresholds]
+likely_epss = 0.1
+likely_cvss = 7.0
+cert_expiring_days = 30
+
+# Exposed remote access / database / ICS, detected by Shodan module only (never port alone).
+# `docker` counts only when the module confirms it (D36).
+[exposure_modules]
+rdp = "Remote Desktop (RDP)"
+rdpeudp = "Remote Desktop (RDP over UDP)"
+smb = "Windows file sharing (SMB)"
+telnet = "Telnet"
+vnc = "VNC remote desktop"
+mysql = "MySQL database"
+ms-sql = "Microsoft SQL Server"
+postgresql = "PostgreSQL database"
+mongodb = "MongoDB database"
+redis = "Redis"
+memcache = "Memcached"
+couchdb = "CouchDB"
+oracle-tns = "Oracle database"
+elastic = "Elasticsearch"
+docker = "Docker API"
+modbus = "Modbus (industrial control)"
+s7 = "Siemens S7 (industrial control)"
+dnp3 = "DNP3 (industrial control)"
+ethernetip = "EtherNet/IP (industrial control)"
+bacnet = "BACnet (building automation)"
+fox = "Niagara Fox (building automation)"
+
+[neglect]
+deprecated_tls = ["SSLv2", "SSLv3", "TLSv1", "TLSv1.1"]
+
+[facts]
+# Login / admin panels: a fact for plays and filters, 0 points (D25).
+panel_title = "\\b(log ?in|sign ?in|admin|dashboard|console|webmail|remote access|vpn|phpmyadmin|grafana|kibana|jenkins|portainer|router)\\b"
+
+[eligibility]
+# signals-scoring.md 1b (D34). First match wins: non-prospect rules, then likely-org rules.
+dynamic_dns = [
+    "duckdns.org", "no-ip.com", "no-ip.org", "no-ip.biz", "ddns.net", "dyndns.org", "dyndns.com",
+    "dynu.net", "synology.me", "myds.me", "myfritz.net", "freeddns.org", "hopto.org", "zapto.org",
+    "sytes.net", "mooo.com", "tplinkdns.com", "asuscomm.com", "dlinkddns.com", "dnsalias.com",
+    "homeip.net", "gotdns.ch", "duckdns.com", "ddnsfree.com", "ddns.me", "freemyip.com",
+]
+parked_title = "domain (is )?for sale|buy this domain|parked|this domain may be for sale|domain has expired|future home of"
+residential_org = "residential|dynamic|broadband|\\bdsl\\b|cable|fib(er|re)|home|mobile|wireless|dial-?up|pool"
+ptr_zone_min_ips = 5
+# Hosting provider: its own domain names many numbered customer servers (s1760765.<hoster>).
+hoster_min_ips = 5
+hoster_numbered_share = 0.5
+institutional_tld = ["edu", "gov", "mil", "bank", "ac.uk", "gov.uk", "nhs.uk", "edu.au", "gov.au", "ac.jp", "go.jp", "ac.in", "gov.in", "edu.cn", "gov.cn", "ac.nz", "govt.nz", "gc.ca", "gouv.fr", "bund.de"]
+vendor_cert_o = "google|microsoft|proofpoint|sonicwall|plesk|acme co|incapsula|imperva|akamai|fortinet|huawei|yandex|draytek|cloudflare|salesforce|synology|bt-panel|alibaba|sangfor|internet widgits|default company|localhost|some-state|cpanel|let's encrypt|amazon|godaddy|digicert|sectigo|globalsign"

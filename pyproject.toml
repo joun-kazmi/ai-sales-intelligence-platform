@@ -21,6 +21,7 @@ pipeline = [
 [project.scripts]
 salesintel-extract = "salesintel.pipeline.extract:main"
 salesintel-sample = "salesintel.pipeline.sample:main"
+salesintel-score = "salesintel.pipeline.score:main"
 
 [dependency-groups]
 dev = [
