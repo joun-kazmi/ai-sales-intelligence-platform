@@ -11,6 +11,9 @@ from pathlib import Path
 import duckdb
 
 PAGE_SIZE = 50
+# Render free tier has 512 MB; DuckDB would otherwise size its memory limit and threads from the
+# host, not the container (measured: 325 MB RSS after full-artifact CSV exports).
+DUCKDB_CONFIG = {"memory_limit": "256MiB", "threads": 2}
 
 # Plays (use-cases.md UC3): title, buyer role, account filter.
 PLAYS = {
@@ -89,7 +92,7 @@ class Store:
     con: duckdb.DuckDBPyConnection = field(init=False)
 
     def __post_init__(self) -> None:
-        self.con = duckdb.connect(str(self.path), read_only=True)
+        self.con = duckdb.connect(str(self.path), read_only=True, config=DUCKDB_CONFIG)
 
     def _cur(self) -> duckdb.DuckDBPyConnection:
         return self.con.cursor()

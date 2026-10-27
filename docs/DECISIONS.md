@@ -507,3 +507,21 @@ One entry per decision: decision, options considered, why, date.
 - **Why**: A perturbation that changes nothing tests nothing. Points are integers in the config, so
   one point is the smallest real change. Result: top-20 overlap >= 0.95 and Spearman >= 0.9971 for
   those runs (DATA_NOTES 5c).
+
+## D55. Exclude false exposures, after the evaluation (2026-10-28, planned)
+- **Decision**: An exposed-service finding counts only when Shodan's identified product is absent
+  or is not a generic SSH / FTP / HTTP / proxy server (e.g. `rdp` answered by OpenSSH does not
+  count). Applied **after** the C2 labels are evaluated against the frozen `data-v1`, as an
+  evidence-correctness fix with a new config version; the owner rescores and publishes `data-v2`.
+  The write-up reports how many of our top 20 had a false exposure.
+- **Options**: fix now (would change the ranking under a pool already being labelled); leave it.
+- **Why**: About 3.4% of exposure findings on the sample name a service that did not answer
+  (DATA_NOTES 5c). Evidence must be true, but the evaluation must measure the ranking that was
+  frozen before labelling.
+
+## D56. App DuckDB connection capped at 256 MiB and 2 threads (2026-10-28)
+- **Decision**: The app's read-only connection uses `memory_limit = 256MiB`, `threads = 2`; a test
+  checks both settings.
+- **Options**: default settings; a smaller artifact.
+- **Why**: Measured 325 MB RSS after full-artifact CSV exports on the owner's machine; DuckDB sizes
+  its defaults from host RAM and cores, not the 512 MB Render container.

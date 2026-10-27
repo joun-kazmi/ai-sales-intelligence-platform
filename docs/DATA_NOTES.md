@@ -235,6 +235,10 @@ nginx (1), `dnp3` by nginx / Ncat (2). Proposed fix (not applied; the config is 
 pool is being labelled): count an exposure only when the identified product is absent or is not a
 generic SSH / FTP / HTTP / proxy server. Open decision for the owner.
 
+**UI on the full artifact [M]** (`data-v1`, owner's machine): page times 15-179 ms (slowest
+`/plays`, which counts five plays); CSV export of the default view 169,285 rows / 34 MB / 2.0 s,
+everything 44 MB / 3.0 s; server RSS 325 MB after the exports, before the 256 MiB DuckDB cap (D56).
+
 C2 pool built from `data-v1`: 60 accounts (20 / 20 / 20), overlap ours vs
 highest-CVSS 0, 425 s, peak RSS 0.97 GB.
 

@@ -61,6 +61,14 @@ cap of 100 MB** (publish fails above it; fallback: Tier 1-2 accounts plus counts
 database. Target <1 s per page when warm; a slow first load after the free
 host sleeps is accepted and stated in the README.
 
+Measured on the full `data-v1` artifact [M] (owner's machine, `feature/ui` `61d93dc`, via
+`ARTIFACT_PATH`): `/` 15 ms, page 500 of `tier=all` 96 ms, `play=exploited` 99 ms, `play=eol`
+129 ms, `/plays` 179 ms, account page 39 ms. `/export.csv` of the default view: 169,285 rows,
+34 MB in 2.0 s (`tier=all&eligibility=all`: 44 MB, 3.0 s), streamed. After those exports the
+server held 325 MB, too close to Render's 512 MB, because DuckDB sizes its memory limit and
+threads from the host, not the container: the app's read-only connection is now capped at
+256 MiB and 2 threads (D56), checked by a test.
+
 **NFR4. Access.** HTTP basic auth over the host's HTTPS. Sample reviewer credentials are set as
 host environment variables and given **only in the submission note**; the README says
 "credentials provided separately". No user management.

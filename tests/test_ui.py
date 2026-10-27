@@ -61,7 +61,7 @@ def test_pages_require_auth_and_render(client, path):
 
 def test_list_is_ranked_and_paged(client, artifact):
     body = client.get("/", auth=AUTH).text
-    total = duckdb.connect(str(artifact), read_only=True).execute(
+    total = client.app.state.store.con.cursor().execute(
         "SELECT count(*) FROM accounts WHERE tier > 0 AND eligibility != 'likely_non_prospect'").fetchone()[0]
     assert f"{total} accounts" in body and "page 1 of 2" in body
     assert body.index("org00.com") < body.index("org01.com")  # RDP + KEV ranks above KEV alone
@@ -74,7 +74,7 @@ def test_bad_filters_are_rejected(client):
 
 
 def test_account_breakdown_sums_to_score(client, artifact):
-    con = duckdb.connect(str(artifact), read_only=True)
+    con = client.app.state.store.con.cursor()
     for domain, score, e, s, n in con.execute(
             "SELECT domain, score, exposure_points, software_points, neglect_points FROM accounts").fetchall():
         assert e + s + n == score
@@ -92,7 +92,7 @@ def test_record_strings_are_escaped(client):
 
 def test_csv_matches_filtered_list(client, artifact):
     rows = list(csv.DictReader(io.StringIO(client.get("/export.csv?tier=1", auth=AUTH).text)))
-    con = duckdb.connect(str(artifact), read_only=True)
+    con = client.app.state.store.con.cursor()
     want = [d for (d,) in con.execute(
         "SELECT domain FROM accounts WHERE tier = 1 AND eligibility != 'likely_non_prospect' ORDER BY rank").fetchall()]
     assert [r["domain"] for r in rows] == want and want
@@ -105,3 +105,10 @@ def test_play_counts_match_their_lists(client):
     assert "14 accounts" in exposed  # 70 orgs, every 5th has RDP
     appliances = client.get("/?play=appliances", auth=AUTH).text
     assert "acme-fw.com" in appliances  # unranked accounts still appear in their play
+
+
+def test_app_connection_is_capped_for_the_free_tier(client):
+    con = client.app.state.store.con.cursor()
+    settings = dict(con.execute(
+        "SELECT name, value FROM duckdb_settings() WHERE name IN ('memory_limit', 'threads')").fetchall())
+    assert settings == {"memory_limit": "256.0 MiB", "threads": "2"}
