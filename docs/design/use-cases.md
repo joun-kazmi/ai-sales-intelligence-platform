@@ -92,7 +92,7 @@ CDN/infra exclusion, so they only show that a field exists and roughly how commo
 |---|---|---|
 | Cert expiring within 30 days | `ssl.cert.expires` vs record `timestamp` | 273 of 6,262 certs in sample (4.4%); already expired 332 (5.3%) [M]. Measured against scan time, not today. **Marker only, 0 points** (D25). |
 | Actively exploited CVE | `vulns[CVE].kev` (CISA Known Exploited Vulnerabilities flag), `ransomware_campaign` (`Known`/`Unknown`), `epss` | Not in DATA_NOTES; found 2026-10-27. 58 distinct KEV CVEs in sample. The most common is CVE-2023-44487 (HTTP/2 Rapid Reset, on most nginx). Only 647 of 2,909 vuln records have a KEV CVE besides it [M]. Marker; its points count once, under software (D25). Ubiquitous CVEs award 0 (D26). |
-| Published this year (CVE-2026-*) | No publication date; the ID year is when the ID was reserved, so a CVE-2026 ID cannot predate 2026 (one-sided marker) | 39k of 127k CVE hits in sample (31%), 539 distinct IDs up to ~110,000 [M]. **Off (0 points, no marker) until a spot-check against cve.org confirms the IDs** (DATA_NOTES 5b, D2). |
+| Published this year (CVE-2026-*) | No publication date; the ID year is when the ID was reserved, so a CVE-2026 ID cannot predate 2026 (one-sided marker) | 39k of 127k CVE hits in sample (31%), 539 distinct IDs up to ~110,000 [M]. Spot-checked IDs are genuine, published 5-25 days before the scan (DATA_NOTES 5b). **Why-now marker, 0 points; the CVE itself scores like any other** (D42). |
 | End-of-life (not "recently") | `eol-product` tag only, **no EOL date** | 90% of tagged records are nginx; version on 6.5% of records [M]. The MVP shows "end-of-life" as a finding, not as a why-now marker (D2). |
 
 ## Evidence rules carried into requirements and scoring

@@ -21,7 +21,7 @@ Decisions D21-D22, D33, D37 in `docs/DECISIONS.md`.
 | Any LLM (labeller and classifier) | One human-labelled, blind eval is the measurement; the classifier stays design only (D28) |
 | C3 (KEV lift) | Cut by review; C1, C2, C4 remain |
 | Country filter | Not in the brief; weak proxy (D29) |
-| "Recently went end-of-life", points for CVE-2026 IDs | No EOL dates; IDs unverified (D2) |
+| "Recently went end-of-life" | No EOL dates in the file (D2) |
 | CRM push, enrichment, contact discovery, outreach drafting | Outside the brief (D5) |
 | UI polish; broad test suite | Plain server-rendered tables; unit tests on attribution, scoring rules and app auth |
 

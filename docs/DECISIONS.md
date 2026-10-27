@@ -13,6 +13,7 @@ One entry per decision: decision, options considered, why, date.
   snapshots and we have one.
 
 ## D2. "Why now" in a single snapshot (2026-10-27, amended after step 3)
+- **Status**: CVE-2026 handling superseded by D42 (2026-10-27).
 - **Status**: partly superseded by D25 (cert expiring is a marker with 0 points) (2026-10-27, external review).
 - **Decision**: The MVP's why-now markers are: cert expiring within 30 days (+5 points) and a
   KEV-flagged (actively exploited) potential CVE (marker only; its points count once, under
@@ -75,6 +76,7 @@ One entry per decision: decision, options considered, why, date.
   "how we know it's right and what it costs", but only if it measurably beats rules.
 
 ## D8. Development data (2026-10-27)
+- **Status**: sampling method superseded by D43 (2026-10-27).
 - **Status**: sample key refined by D23 (2026-10-27, external review).
 - **Decision**: Develop domain-level features and scoring on a **domain-complete sample**: the
   owner regenerates it locally once the record -> domain key is fixed, by hash-sampling ~1 in 20
@@ -365,3 +367,23 @@ One entry per decision: decision, options considered, why, date.
 - **Options**: edit it item by item.
 - **Why**: It predates the design. DATA_NOTES stays the record of measured facts; decisions live
   here.
+
+## D42. CVE-2026 IDs scored like any other CVE (2026-10-27)
+- **Decision**: CVE-2026-* IDs score through the record's own CVSS / EPSS / KEV like any other CVE,
+  and show a 0-point "CVE published in 2026" why-now marker.
+- **Options**: keep them at 0 points (D2); trust them without checking.
+- **Why**: The owner checked four high-volume IDs via the official CVE API: all four are real,
+  published 2026-10-01 to 2026-10-21 (Apache HTTP Server, OpenSSH, PHP), 5-25 days before the
+  scan (DATA_NOTES 5b). The large CVE-2026 share is newly published CVEs matched against old
+  versions, which is exactly the "newly vulnerable" signal. Widespread ones are handled by the
+  ubiquitous-CVE list (D26), not by excluding the year.
+
+## D43. Domain-complete sample: full index first, stable hash, carried IP counts (2026-10-27)
+- **Decision**: Build the full IP -> candidate-domain index from the full feature layer first;
+  sample domains with `hashlib.blake2b` (8-byte digest, `% 20 == 0`); write every record of IPs
+  where a kept domain appears directly; carry each IP's full candidate-domain count into the
+  sample (`_sample.ip_domain_count`), and attribution uses it.
+- **Options**: D8 as written (`hash(domain) % 20`, counts computed inside the sample).
+- **Why**: Python's `hash()` is salted per process, so the sample would change on every run.
+  Counting domains inside the sample would make shared IPs look single-domain whenever only one
+  of their domains was sampled, which would wrongly allow via-IP attribution.

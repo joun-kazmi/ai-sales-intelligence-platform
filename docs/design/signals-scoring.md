@@ -35,9 +35,17 @@ owner, often the hoster, and produced most ISP false positives (DATA_NOTES 4b).
 **Attribution label shown in the app:** High = direct via scan hostname or cert CN; Medium =
 direct via `http.host` or PTR; Low = via-IP. C1 (section 4) measures each label.
 
-**Domain-complete dev sample (D8).** Keep a domain when `hash(domain) % 20 == 0`, plus every
-record of any IP on which a kept domain appears directly (so attribution runs on real IP context).
-Drop `http.html` and raw `data`.
+**Domain-complete dev sample (D8, D43).** Built in three steps, by `salesintel-sample`:
+1. Build the **full IP -> candidate-domain index** from the full file's feature layer (every
+   non-infra candidate domain named by any record on each IP).
+2. Sample domains with a **stable hash**: keep a domain when
+   `int.from_bytes(blake2b(domain, digest_size=8)) % 20 == 0` (`hashlib.blake2b`; Python's
+   `hash()` is salted per process and is not reproducible).
+3. Write every record of any IP on which a kept domain appears directly, minus `http.html` and raw
+   `data`, and **carry each IP's full candidate-domain count** from the index into each sampled
+   record (`_sample.ip_domain_count`). Attribution uses the carried count, so an IP that is shared
+   in the full file stays shared (unresolved for via-IP) in the sample even when only one of its
+   domains was sampled.
 
 ## 1b. Prospect eligibility (a filter, not part of the score; D34)
 Each account gets one rule-based label, shown in the list and used as a filter. The default view
@@ -63,7 +71,7 @@ sample [M]) is labelled **verified** instead of "potential" (D35). Points are th
 | Software, account cap | Sum over products capped at **40** (potential, unverified matches never outweigh more than one observed exposure plus a little) | <= 40 |
 | Neglect (cap 10) | Expired cert 5; deprecated TLS 3; self-signed cert on a public name 3; server version disclosed 2; HTTPS without HSTS 2 | <= 10 |
 | Facts, 0 points | Customer appliance; login / admin / DevOps panel; behind CDN / WAF | filters and plays only |
-| Why-now markers, 0 points | Potential known-exploited CVE; cert expires within 30 days of the scan | shown, not scored |
+| Why-now markers, 0 points | Potential known-exploited CVE; CVE published in 2026 (CVE-2026-* ID); cert expires within 30 days of the scan | shown, not scored |
 
 Rules:
 - **Ubiquitous CVEs.** CVEs on a documented ubiquitous-CVE list award 0. Provisional list:
@@ -71,7 +79,9 @@ Rules:
   sample [M]). On Wednesday, after attribution works, measure each CVE's share of attributed
   CVE-bearing accounts: if only CVE-2023-44487 stands out, the list stays as is; otherwise extend
   it with the measured outliers and record them in DATA_NOTES. (Replaces the 10% rule, D26.)
-- **CVE-2026-\* IDs** award 0 until the owner's spot-check (D2).
+- **CVE-2026-\* IDs** are scored like any other CVE, from the record's own CVSS / EPSS / KEV
+  (spot-checked as genuine, DATA_NOTES 5b, D42). They also show a 0-point why-now marker,
+  "CVE published in 2026" (the ID year is the reservation year, so it cannot predate 2026).
 - **Certificate state** is exactly one of: **expired** (neglect, 5) / **expires within 30 days of
   the scan** (why-now marker, 0) / **ok**. Per certificate; an account shows the expired finding if
   any cert is expired and the marker if any cert is in the 30-day window (D38).
