@@ -15,7 +15,9 @@ def _basic(user: str, password: str) -> dict[str, str]:
 def client(monkeypatch):
     monkeypatch.setenv("APP_USERNAME", "reviewer")
     monkeypatch.setenv("APP_PASSWORD", "s3cret")
-    return TestClient(create_app())
+    monkeypatch.delenv("ARTIFACT_REPO", raising=False)
+    with TestClient(create_app()) as c:
+        yield c
 
 
 def test_refuses_to_start_without_credentials(monkeypatch):

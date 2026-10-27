@@ -138,7 +138,9 @@ def _write_zst(path, records):
 
 
 RECORDS = [
-    rec(ip_str="198.51.100.1", _shodan={"module": "https", "options": {"hostname": "acme.com"}}),
+    rec(ip_str="198.51.100.1", _shodan={"module": "https", "options": {"hostname": "acme.com"}},
+        data="banner", vulns={"CVE-1": {"cvss": 5.0, "summary": "long text", "references": ["u"]}},
+        ssl={"chain": ["pem"], "versions": ["TLSv1.2"]}, http={"html": "<x>", "favicon": {"data": "b64"}}),
     rec(ip_str="198.51.100.1", port=3389, _shodan={"module": "rdp"}),
     rec(ip_str="198.51.100.2", hostnames=["a.shared-one.com"]),
     rec(ip_str="198.51.100.2", hostnames=["b.shared-two.com"]),
@@ -195,8 +197,13 @@ def test_sample_carries_full_ip_domain_count(tmp_path):
     by_ip = {}
     for r in got:
         by_ip.setdefault(r["ip_str"], set()).add(r["_sample"]["ip_domain_count"])
-        assert "data" not in r and "html" not in r.get("http", {})
+        assert "data" not in r and "html" not in r.get("http", {}) and "favicon" not in r.get("http", {})
+        assert "chain" not in r.get("ssl", {})
+        assert all("summary" not in v and "references" not in v for v in r.get("vulns", {}).values())
     assert by_ip == {"198.51.100.1": {1}, "198.51.100.2": {2}}
     assert sm["sampled_ips_shared"] == 1
     # The nameless RDP record rides along with its IP.
     assert any(r.get("port") == 3389 for r in got)
+    # Schema fields survive the strip.
+    acme = next(r for r in got if r.get("vulns"))
+    assert acme["vulns"]["CVE-1"]["cvss"] == 5.0 and acme["ssl"]["versions"] == ["TLSv1.2"]

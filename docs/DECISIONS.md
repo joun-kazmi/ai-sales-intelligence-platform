@@ -397,3 +397,14 @@ One entry per decision: decision, options considered, why, date.
   `herokuapp.com`, merging unrelated users into one fake account. With the private section each
   tenant stays separate, and D34's eligibility label marks dynamic-DNS hosts as non-prospects.
   Cloud PTR names (`*.compute-1.amazonaws.com`) are still dropped by the infra suffix match.
+
+## D45. Domain-complete sample drops large non-schema fields (2026-10-27)
+- **Decision**: Besides `http.html` and raw `data`, the sample builder drops large fields the
+  feature schema (D30) never reads: CVE `summary` / `references`, `ssl.chain` and related TLS
+  handshake detail, `http.favicon` / `sitemap` / `robots` / `securitytxt` / `components`, `tcp`.
+  If the sample is still over ~45 MB, it is rebuilt with modulus 40.
+- **Options**: keep full records minus html/data (D43 as written).
+- **Why**: Measured on the line sample: 2,486 -> 511 compressed bytes per sampled record. The
+  sample has to reach the development sandbox through git, and the full-file sample would
+  otherwise be roughly 300+ MB [H]. Re-extraction from the sample still works because every
+  schema field is kept.

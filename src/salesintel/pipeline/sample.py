@@ -3,8 +3,9 @@
 1. Build the full IP -> candidate-domain index from the full file's feature partition.
 2. Keep a domain when blake2b(domain, 8 bytes) % modulus == 0 (stable across runs and machines).
 3. Stream the raw file once; write every record of an IP on which a kept domain appears,
-   without http.html and raw data, carrying the IP's full candidate-domain count as
-   `_sample.ip_domain_count` so shared IPs stay shared in the sample.
+   without http.html, raw data and other large fields outside the feature schema (D45),
+   carrying the IP's full candidate-domain count as `_sample.ip_domain_count` so shared IPs
+   stay shared in the sample.
 
     salesintel-sample dataset.json.zst --features out/full/features/<sha256> \\
         --out data/sample/domain_sample.jsonl.zst
@@ -25,6 +26,13 @@ import zstandard
 
 from salesintel.pipeline.atomic import atomic_file, code_commit, file_sha256, write_json
 from salesintel.pipeline.extract import iter_batches
+
+# Large fields the feature schema (D30) never reads. CVE summaries/references alone are ~40% of
+# a sampled record; cert chains and favicons most of the rest (DATA_NOTES 5c).
+DROP_TOP = ("data", "tcp")
+DROP_HTTP = ("html", "favicon", "sitemap", "robots", "securitytxt", "components")
+DROP_SSL = ("chain", "chain_sha256", "handshake_states", "ciphers", "dhparams", "tlsext", "ocsp", "trust")
+DROP_VULN = ("summary", "references")
 
 _IP_STR = re.compile(rb'"ip_str"\s*:\s*"([^"]{1,64})"')
 _IPV6 = re.compile(rb'"ipv6"\s*:\s*"([^"]{1,64})"')
@@ -66,6 +74,21 @@ def sampled_ips(features: Path, modulus: int) -> tuple[dict[str, int], dict]:
     return dict(rows), stats
 
 
+def strip(rec: dict) -> dict:
+    for k in DROP_TOP:
+        rec.pop(k, None)
+    for key, drop in (("http", DROP_HTTP), ("ssl", DROP_SSL)):
+        if isinstance(rec.get(key), dict):
+            for k in drop:
+                rec[key].pop(k, None)
+    if isinstance(rec.get("vulns"), dict):
+        for info in rec["vulns"].values():
+            if isinstance(info, dict):
+                for k in DROP_VULN:
+                    info.pop(k, None)
+    return rec
+
+
 def _record_ip(line: bytes) -> str | None:
     m = _IP_STR.search(line) or _IPV6.search(line)
     return m.group(1).decode(errors="replace") if m else None
@@ -96,9 +119,7 @@ def build(raw: Path, features: Path, out: Path, modulus: int) -> dict:
                     except orjson.JSONDecodeError:
                         counts["parse_error"] += 1
                         continue
-                    rec.pop("data", None)
-                    if isinstance(rec.get("http"), dict):
-                        rec["http"].pop("html", None)
+                    strip(rec)
                     rec["_sample"] = {"ip_domain_count": ips[ip], "modulus": modulus, "hash": "blake2b-8"}
                     zw.write(orjson.dumps(rec) + b"\n")
                     counts["written"] += 1

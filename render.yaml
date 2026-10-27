@@ -9,3 +9,12 @@ services:
         sync: false
       - key: APP_PASSWORD
         sync: false
+      # Artifact from a private GitHub Release (D20). Leave ARTIFACT_REPO unset to run bare.
+      - key: ARTIFACT_REPO
+        sync: false
+      - key: ARTIFACT_TAG
+        sync: false
+      - key: ARTIFACT_NAME
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false

@@ -1,12 +1,15 @@
-"""Hosted app. Bare version: basic auth and noindex on every response (NFR4, NFR5)."""
+"""Hosted app: basic auth and noindex on every response (NFR4, NFR5); artifact at startup (D20)."""
 
 import base64
 import binascii
 import os
 import secrets
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, Response
+
+from salesintel.app.artifact import ArtifactConfig, download, read_manifest
 
 NOINDEX = {"X-Robots-Tag": "noindex, nofollow"}
 
@@ -38,7 +41,16 @@ def _authorized(header: str | None, user: str, password: str) -> bool:
 
 def create_app() -> FastAPI:
     user, password = _credentials()
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    artifact_cfg = ArtifactConfig.from_env()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # A failed download stops startup: serving without data would hide the failure.
+        app.state.artifact = download(artifact_cfg) if artifact_cfg else None
+        app.state.manifest = read_manifest(app.state.artifact) if app.state.artifact else {}
+        yield
+
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
     @app.middleware("http")
     async def basic_auth_and_noindex(request: Request, call_next) -> Response:
@@ -58,7 +70,11 @@ def create_app() -> FastAPI:
         return "User-agent: *\nDisallow: /\n"
 
     @app.get("/", response_class=PlainTextResponse)
-    def index() -> str:
-        return "salesintel: up"
+    def index(request: Request) -> str:
+        manifest = request.app.state.manifest
+        if not manifest:
+            return "salesintel: up (no artifact configured)"
+        lines = [f"{k}: {v}" for k, v in manifest.items()]
+        return "salesintel: up\n" + "\n".join(lines)
 
     return app
