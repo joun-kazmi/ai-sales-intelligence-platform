@@ -479,3 +479,23 @@ One entry per decision: decision, options considered, why, date.
 - **Why**: The full-file score peaked at 13.5 GB on a 15 GB machine: the feature layer was held
   in memory twice. On the sample the change cut the peak from 1,094 to 750 MB with identical
   output; the full-file peak is re-measured on the next run.
+
+## D52. C2 label pool: neutral evidence, hashed tie-break, built from the full artifact (2026-10-28)
+- **Decision**: The blind sheet shows the same neutral evidence for every pooled account, built
+  from the feature layer (services, products / versions, top CVEs by CVSS with KEV / EPSS, cert
+  state, TLS, how the domain was linked), never our finding sentences, score, tier, rank or list.
+  The "highest CVSS" baseline breaks its many CVSS-10.0 ties by a seeded hash, not alphabetically.
+  The pool is built from the published full-file artifact (`data-v1`) with the frozen config.
+  The key is a separate file; the sheet is never overwritten once created.
+- **Options**: show our findings; sort ties by domain; build from the sample.
+- **Why**: Our sentences are curated by the pipeline under test, so showing them would favour our
+  list. Alphabetical ties would skew the baseline. The shipped ranking is the full-file one.
+
+## D53. C4 measured on the domain-complete sample (2026-10-28)
+- **Decision**: Run C4 (each point weight +/-25%) on the sampled domains of the domain-complete
+  sample, default view, frozen config.
+- **Options**: run on the full file (20 rescoring runs over 1.4M attributed rows).
+- **Why**: Attribution and eligibility do not depend on point weights, so the sample answers the
+  question in 34 s. Result [M]: top-20 overlap >= 0.85 and Spearman >= 0.9993 in every run
+  (DATA_NOTES 5c). Caveat: the 2-point weights round back to 2 at +/-25%, so those runs are
+  no-ops.

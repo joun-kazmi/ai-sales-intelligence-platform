@@ -194,6 +194,19 @@ non-prospects):
 - Eligibility stays 72% "uncertain": the label mainly hides the obvious non-prospects (hosters, ISP
   zones, dynamic DNS, residential, parked). Stated as a limitation in the write-up.
 
+**Full-file score, frozen config [M]** (`2576298`, config `765eef67e0c5`, 54 ubiquitous CVEs, owner's
+machine): 1 min 20 s wall, **peak RSS 2.8 GB** (13.5 GB before D51), artifact 46,411,776 bytes.
+349,520 accounts, 486,094 findings. Tiers, all / default view: T1 1,691 / 982, T2 7,535 / 6,201,
+T3 168,410 / 162,093, not ranked 171,884 / 167,265. The x20 estimates from the sample held
+(~1,100 / ~6,000 in the default view). Published as private release `data-v1`
+(`artifact.duckdb`).
+
+**C4 sensitivity [M]** (sample, 17,028 default-view sampled accounts, config `765eef67e0c5`, 34 s):
+each of 10 point weights at +/-25%. Top-20 overlap with the frozen ranking >= 0.85 in all 20 runs
+(lowest: `cve_kev` +25% and `cve_likely` -25%, 0.85); top-100 overlap >= 0.72 (lowest:
+`exposed_service` -25%); Spearman over all accounts >= 0.9993. `version_disclosed` and `no_hsts`
+(2 points) round back to 2, so their runs are no-ops. The ranking is not knife-edge.
+
 ## 6. Recommended pipeline implications (superseded by `docs/DECISIONS.md`)
 1. Pre-filter: drop `tags` in (`honeypot`), modules in noise list, and records whose org class is CDN/ISP *and* whose only names are PTR names.
 2. Build a company table keyed by registrable domain (use a public-suffix list), attach all IPs/ports/signals, dedupe CVEs per product, not per record.

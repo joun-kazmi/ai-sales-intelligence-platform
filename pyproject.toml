@@ -22,6 +22,9 @@ pipeline = [
 salesintel-extract = "salesintel.pipeline.extract:main"
 salesintel-sample = "salesintel.pipeline.sample:main"
 salesintel-score = "salesintel.pipeline.score:main"
+salesintel-labelpool = "salesintel.eval.labelpool:main"
+salesintel-dnscheck = "salesintel.eval.dnscheck:main"
+salesintel-sensitivity = "salesintel.eval.sensitivity:main"
 
 [dependency-groups]
 dev = [

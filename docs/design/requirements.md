@@ -45,7 +45,8 @@ Scoring the full feature layer [M] (`e519275`, config `6cf3bc33da1a`): 2 min 21 
 13.5 GB** on the 15 GB machine, artifact 44.8 MB. Too close to OOM: attribution materialized the
 whole feature layer twice. Fixed (D51): streamed views plus a DuckDB `memory_limit` (default 6 GB)
 with a spill directory; on the sample the peak fell from 1,094 to 750 MB with identical output.
-The full-file peak is re-measured on the next full scoring run.
+Re-measured on the full file [M] (`2576298`, config `765eef67e0c5`): **1 min 20 s wall, peak RSS
+2.8 GB** (from 13.5 GB), artifact 46.4 MB.
 
 **NFR2. Raw retention is a trade-off.** Deleting raw files after extraction is cheapest, but
 then a new signal cannot be backfilled. Production answer: keep raw in cheap cold object storage

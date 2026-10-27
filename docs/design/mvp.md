@@ -49,6 +49,8 @@ finding, the human eval (C2), the hosted list, the write-up.
 **Weights frozen** 2026-10-28 at scoring config `765eef67e0c5` (D50), ahead of the Thursday-morning
 slot; labelling can start once the label pool is exported.
 
+**UI spec:** `docs/design/ui.md` (Thursday build).
+
 **Write-up must state:** prospect eligibility leaves 72% of accounts "uncertain"; the label hides
 the obvious non-prospects and does not classify the rest.
 
