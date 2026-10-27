@@ -1,10 +1,13 @@
 {
-  "code_commit": "c61315d",
+  "code_commit": "3a0145f-dirty",
   "counts": {
+    "dropped_cdn_edge_unnamed": 308034,
+    "dropped_honeypot": 23,
+    "dropped_noise_module": 6049,
     "records": 14608407,
-    "written": 520923
+    "written": 206817
   },
-  "created_at": "2026-10-27T11:48:43+00:00",
+  "created_at": "2026-10-27T14:57:18+00:00",
   "features_manifest": {
     "blocklist_version": "faf9761a45c4",
     "extractor_version": "1",
@@ -18,9 +21,9 @@
   "input_sha256": "71cb1991955ae585cdffec54ceb4fd99ec54ccc47cfc5b7778f57ae6dcc5b5b7",
   "kind": "domain_sample",
   "modulus": 20,
-  "output_bytes": 121415036,
+  "output_bytes": 57125378,
   "sampled_domains": 21963,
   "sampled_ips": 45488,
   "sampled_ips_shared": 15409,
-  "seconds_total": 309.8
+  "seconds_total": 412.5
 }
