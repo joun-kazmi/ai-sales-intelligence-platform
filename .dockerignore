@@ -1,0 +1,10 @@
+.git
+.venv
+data
+docs
+tests
+**/__pycache__
+*.parquet
+*.duckdb
+*.zst
+.env

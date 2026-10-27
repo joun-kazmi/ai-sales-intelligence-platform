@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: salesintel
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: APP_USERNAME
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
