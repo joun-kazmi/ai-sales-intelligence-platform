@@ -238,6 +238,9 @@ generic SSH / FTP / HTTP / proxy server. Open decision for the owner.
 **UI on the full artifact [M]** (`data-v1`, owner's machine): page times 15-179 ms (slowest
 `/plays`, which counts five plays); CSV export of the default view 169,285 rows / 34 MB / 2.0 s,
 everything 44 MB / 3.0 s; server RSS 325 MB after the exports, before the 256 MiB DuckDB cap (D56).
+With the cap and the polished UI: page times 34-146 ms, export 34 MB in 1.5 s, **230 MB** after the
+export. RDAP pre-fill of the C1 misses: 30 / 30 filled on a rerun after the first run crashed on a
+dropped connection (fixed: per-lookup retry, progress saved).
 
 C2 pool built from `data-v1`: 60 accounts (20 / 20 / 20), overlap ours vs
 highest-CVSS 0, 425 s, peak RSS 0.97 GB.

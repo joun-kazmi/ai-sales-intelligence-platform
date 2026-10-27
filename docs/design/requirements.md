@@ -69,6 +69,11 @@ server held 325 MB, too close to Render's 512 MB, because DuckDB sizes its memor
 threads from the host, not the container: the app's read-only connection is now capped at
 256 MiB and 2 threads (D56), checked by a test.
 
+Polished UI on the full `data-v1` artifact [M] (owner's machine, the three feature branches merged,
+95 tests passing): `/` 45 ms, page 500 89 ms, `play=exploited` 97 ms, `play=eol` 146 ms, `/plays`
+143 ms, account page 34 ms; CSV export 34 MB in 1.5 s. Server memory after the export **230 MB with
+the 256 MiB cap** (325 MB before D56), under Render's 512 MB.
+
 **NFR4. Access.** HTTP basic auth over the host's HTTPS. Sample reviewer credentials are set as
 host environment variables and given **only in the submission note**; the README says
 "credentials provided separately". No user management.
