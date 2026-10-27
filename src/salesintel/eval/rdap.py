@@ -46,7 +46,13 @@ def owner_from_rdap(doc: dict) -> str:
 
 def lookup(client: httpx.Client, ip: str, pause: float) -> str:
     for attempt in range(2):
-        r = client.get(RDAP.format(ip=ip))
+        try:
+            r = client.get(RDAP.format(ip=ip))
+        except httpx.HTTPError as e:  # dropped connection, timeout, protocol error: retry once
+            if attempt == 0:
+                time.sleep(pause)
+                continue
+            return f"rdap error: {type(e).__name__}"
         if r.status_code == 429 and attempt == 0:
             time.sleep(max(pause, 5))
             continue
@@ -81,12 +87,13 @@ def fill(path: Path, client: httpx.Client | None = None, pause: float = 1.0, for
                 looked += 1
             r["ip_owner"] = cache[r["ip"]]
     finally:
+        # Save progress even if the run dies part-way; a rerun skips the rows already filled.
         if own:
             client.close()
-    with atomic_file(path) as tmp, open(tmp, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=fields)
-        w.writeheader()
-        w.writerows(rows)
+        with atomic_file(path) as tmp, open(tmp, "w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=fields)
+            w.writeheader()
+            w.writerows(rows)
     return {"rows": len(rows), "lookups": looked}
 
 

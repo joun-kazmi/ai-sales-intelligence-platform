@@ -1,4 +1,5 @@
 import csv
+import pytest
 
 import httpx
 
@@ -48,3 +49,49 @@ def test_fill_keeps_columns_and_caches(tmp_path):
     assert out[2]["ip_owner"] == "rdap error 404"
     again = rdap.fill(path, httpx.Client(transport=httpx.MockTransport(handler)), pause=0)
     assert again["lookups"] == 0  # already filled rows are skipped
+
+
+def _write(path, ips):
+    with open(path, "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=["domain", "host", "ip", "source", "resolved_ips", "verdict", "notes"])
+        w.writeheader()
+        w.writerows({"domain": f"d{i}.com", "host": f"d{i}.com", "ip": ip, "source": "ptr", "resolved_ips": "",
+                     "verdict": "", "notes": ""} for i, ip in enumerate(ips))
+
+
+def test_dropped_connection_retries_once_then_records_error(tmp_path):
+    path = tmp_path / "misses.csv"
+    _write(path, ["192.0.2.1", "192.0.2.2"])
+    calls = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        ip = req.url.path.rsplit("/", 1)[1]
+        calls[ip] = calls.get(ip, 0) + 1
+        if ip == "192.0.2.1" and calls[ip] == 1:
+            raise httpx.RemoteProtocolError("Server disconnected without sending a response.", request=req)
+        if ip == "192.0.2.2":
+            raise httpx.ConnectTimeout("timed out", request=req)
+        return httpx.Response(200, json=DOC)
+
+    res = rdap.fill(path, httpx.Client(transport=httpx.MockTransport(handler)), pause=0)
+    out = {r["ip"]: r["ip_owner"] for r in csv.DictReader(open(path))}
+    assert res["lookups"] == 2 and calls == {"192.0.2.1": 2, "192.0.2.2": 2}
+    assert out["192.0.2.1"] == "Example Corp (EXAMPLE-NET, US)"  # retry succeeded
+    assert out["192.0.2.2"] == "rdap error: ConnectTimeout"
+
+
+def test_progress_is_saved_when_the_run_dies(tmp_path):
+    path = tmp_path / "misses.csv"
+    _write(path, ["192.0.2.1", "192.0.2.2", "192.0.2.3"])
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path.endswith("192.0.2.3"):
+            raise RuntimeError("unexpected crash")  # not an httpx error: the run stops
+        return httpx.Response(200, json=DOC)
+
+    with pytest.raises(RuntimeError):
+        rdap.fill(path, httpx.Client(transport=httpx.MockTransport(handler)), pause=0)
+    out = list(csv.DictReader(open(path)))
+    assert [r["ip_owner"] for r in out] == ["Example Corp (EXAMPLE-NET, US)"] * 2 + [""]
+    again = rdap.fill(path, httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=DOC))), pause=0)
+    assert again["lookups"] == 1  # the rerun only looks up what is missing
