@@ -145,7 +145,17 @@ The feature layer keeps these fields per filtered record (no `http.html`, no raw
 Cut: C3 (KEV lift), the LLM labeller (D28) and the most-CVEs baseline (D37).
 
 ## 5. LLM use
-**None in the MVP pipeline or evaluation** (D28). The account classifier (display name, industry,
+**One use, in evaluation only (D57): an AI second rater for C2.** `salesintel-labelpool ai-label`
+sends each pooled account's neutral evidence (from `labels.csv`, never `key.json`) to the latest
+Claude Sonnet with the same four-question rubric, through structured output. The evidence is
+delimited as untrusted data and the model is told to ignore instructions inside it. It writes
+`ai_labels.csv` and `ai_run.json` (model, prompt hash, tokens, cost in USD). `evaluate --rater
+human|ai` reports precision@20 from either sheet, plus human-vs-AI agreement on worth_a_call
+(percent agreement, Cohen's kappa) over the rows the human labelled. Server-side refusal fallbacks
+are off so the rater's model never changes mid-run; a refusal is counted and labelled "unknown".
+The AI cannot browse, while the human may look a domain up: an asymmetry stated with the result.
+
+**Nothing in the pipeline or the app.** The account classifier (display name, industry,
 real business vs ISP / hoster / personal / parked) stays design only; the MVP uses TLD and keyword
 rules, which are first in the cut order if time slips. If it is ever built: measure accuracy on free
 TLD labels (`.edu`, `.gov`, `.ac.uk`, `.mil`, TLD hidden) plus owner checks, log real token cost,

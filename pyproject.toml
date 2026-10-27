@@ -19,6 +19,10 @@ pipeline = [
     "tldextract>=5.1",
 ]
 
+llm = [
+    "anthropic>=0.70",
+]
+
 [project.scripts]
 salesintel-extract = "salesintel.pipeline.extract:main"
 salesintel-sample = "salesintel.pipeline.sample:main"

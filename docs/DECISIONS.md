@@ -525,3 +525,16 @@ One entry per decision: decision, options considered, why, date.
 - **Options**: default settings; a smaller artifact.
 - **Why**: Measured 325 MB RSS after full-artifact CSV exports on the owner's machine; DuckDB sizes
   its defaults from host RAM and cores, not the 512 MB Render container.
+
+## D57. AI second rater for C2 (2026-10-28, reverses the labeller cut in D28)
+- **Decision**: Add `salesintel-labelpool ai-label`: Claude (default `claude-sonnet-5-5`, the latest
+  Sonnet) labels the blind pool with the human rubric via structured output, one call per account,
+  from `labels.csv` only. Output `ai_labels.csv` + `ai_run.json` (model, prompt hash, tokens, cost).
+  `evaluate --rater human|ai` and a human-vs-AI agreement report (percent agreement, Cohen's kappa
+  on worth_a_call), computed on a partly filled human sheet; precision still needs every row.
+  Evidence is delimited untrusted data; the model is told to ignore instructions in it. No
+  server-side refusal fallback (a refusal becomes "unknown" and is counted). Effort `medium`.
+- **Options**: no LLM (D28); LLM labels replacing human labels; fallbacks on (SDK default advice).
+- **Why**: Owner's call. The human labels stay the measurement; the AI rater shows "how we know
+  it's right and what it costs" (brief) by its agreement with the human, with real token cost
+  logged. Fallbacks off because a fallback would switch the rater's model inside a measurement.

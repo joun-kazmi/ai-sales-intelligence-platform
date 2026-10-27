@@ -85,7 +85,7 @@ data, `.env`, `*.duckdb` or `*.parquet` in git.
 infra blocklist version, PSL snapshot version, scoring config version, code commit, row counts.
 All outputs are written atomically (temp file, fsync, rename).
 
-**NFR8. LLM use.** None in the MVP (D28). If one is added later: Accuracy and cost per run are measured and reported.
+**NFR8. LLM use.** One use in the MVP: the C2 AI second rater (D57), offline, never in scoring or the app. Accuracy and cost per run are measured and reported.
 Inputs are short sanitized fields, never raw banners or HTML (prompt-injection risk). Outputs are
 constrained to a schema. Results are cached per domain, so cost scales with new domains, not
 with files.

@@ -4,10 +4,12 @@ build:    pool = our top k + top k by highest CVSS + k random, all from the same
           (default view: likely non-prospects hidden), deduplicated, shuffled. The label sheet shows
           the same neutral evidence for every account (from the feature layer, not our findings),
           and nothing about score, tier, rank or which list it came from. The key is a separate file.
-evaluate: precision@k per list from the filled-in sheet.
+ai-label: a second rater (Claude) labels the same sheet into ai_labels.csv (D57).
+evaluate: precision@k per list from the human or AI sheet, plus human-vs-AI agreement.
 
     salesintel-labelpool build out/full/artifact.duckdb out/full/features/<sha256> --out out/full/c2
-    salesintel-labelpool evaluate out/full/c2
+    salesintel-labelpool ai-label out/full/c2
+    salesintel-labelpool evaluate out/full/c2 [--rater human|ai]
 """
 
 import argparse
@@ -148,14 +150,52 @@ def wilson(yes: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return ((c - r) / d, (c + r) / d)
 
 
-def evaluate(out: Path) -> dict:
+SHEETS = {"human": "labels.csv", "ai": "ai_labels.csv"}
+CATEGORIES = ("yes", "no", "unknown")
+
+
+def _read_sheet(out: Path, rater: str) -> dict[str, dict]:
+    with open(out / SHEETS[rater], newline="") as fh:
+        return {r["id"]: r for r in csv.DictReader(fh)}
+
+
+def cohen_kappa(a: list[str], b: list[str]) -> float | None:
+    n = len(a)
+    if n == 0:
+        return None
+    po = sum(x == y for x, y in zip(a, b)) / n
+    pe = sum((a.count(c) / n) * (b.count(c) / n) for c in CATEGORIES)
+    return 1.0 if pe == 1 else (po - pe) / (1 - pe)
+
+
+def agreement(out: Path) -> dict | None:
+    """Human vs AI on worth_a_call, over the rows the human has labelled (partial sheet allowed)."""
+    if not (out / SHEETS["ai"]).exists():
+        return None
+    human, ai = _read_sheet(out, "human"), _read_sheet(out, "ai")
+    pairs = [(_norm(h["worth_a_call"]), _norm(ai[i]["worth_a_call"])) for i, h in human.items()
+             if _norm(h["worth_a_call"]) is not None and i in ai]
+    a, b = [x for x, _ in pairs], [y for _, y in pairs]
+    k = cohen_kappa(a, b)
+    return {
+        "question": "worth_a_call", "rows_compared": len(pairs), "rows_in_pool": len(human),
+        "percent_agreement": round(sum(x == y for x, y in pairs) / len(pairs), 3) if pairs else None,
+        "cohen_kappa": round(k, 3) if k is not None else None,
+        "confusion_human_by_ai": {h: {c: sum(1 for x, y in pairs if x == h and y == c) for c in CATEGORIES}
+                                  for h in CATEGORIES},
+    }
+
+
+def evaluate(out: Path, rater: str = "human") -> dict:
     key = json.loads((out / "key.json").read_text())
-    with open(out / "labels.csv", newline="") as fh:
-        labels = {r["id"]: r for r in csv.DictReader(fh)}
+    labels = _read_sheet(out, rater)
+    result = {"meta": key["meta"], "rater": rater, "agreement": agreement(out), "lists": {}}
     missing = [i for i, r in labels.items() if _norm(r["worth_a_call"]) is None]
     if missing:
-        raise SystemExit(f"worth_a_call missing or not yes/no/unknown for: {', '.join(missing)}")
-    result = {"meta": key["meta"], "lists": {}}
+        if result["agreement"] is not None:
+            print(json.dumps({"agreement": result["agreement"]}, indent=2), file=sys.stderr)
+        raise SystemExit(f"{rater} worth_a_call missing or not yes/no/unknown for: {', '.join(missing)} "
+                         "(precision needs every row; agreement above uses the labelled rows)")
     for lst in ("ours", "cvss", "random"):
         ids = [i for i, k in key["key"].items() if k[f"rank_{lst}"] is not None]
         vals = [_norm(labels[i]["worth_a_call"]) for i in ids]
@@ -167,7 +207,7 @@ def evaluate(out: Path) -> dict:
             "precision": round(yes / (yes + no), 3) if yes + no else None,
             "wilson95": [round(lo, 3), round(hi, 3)], "sub_questions_yes": sub,
         }
-    write_json(out / "c2_result.json", result)
+    write_json(out / f"c2_result_{rater}.json", result)
     return result
 
 
@@ -181,8 +221,20 @@ def main(argv: list[str] | None = None) -> None:
     b.add_argument("--k", type=int, default=20)
     e = sub.add_parser("evaluate")
     e.add_argument("out", type=Path)
+    e.add_argument("--rater", choices=sorted(SHEETS), default="human")
+    a = sub.add_parser("ai-label", help="second rater: label the pool with Claude (needs ANTHROPIC_API_KEY)")
+    a.add_argument("out", type=Path)
+    a.add_argument("--model", default=None, help="default: latest Claude Sonnet")
+    a.add_argument("--force", action="store_true", help="overwrite ai_labels.csv")
     args = ap.parse_args(argv)
-    res = build(args.artifact, args.features, args.out, args.k) if args.cmd == "build" else evaluate(args.out)
+    if args.cmd == "build":
+        res = build(args.artifact, args.features, args.out, args.k)
+    elif args.cmd == "evaluate":
+        res = evaluate(args.out, args.rater)
+    else:
+        from salesintel.eval import ailabel
+
+        res = ailabel.run(args.out, model=args.model or ailabel.DEFAULT_MODEL, force=args.force)
     print(json.dumps(res, indent=2))
 
 

@@ -18,7 +18,7 @@ Decisions D21-D22, D33, D37 in `docs/DECISIONS.md`.
 |---|---|
 | FR11 / UC4 coverage-aware merge, C5 | One file; designed in `architecture.md` |
 | Queue, workers, object storage, cold raw retention | Design only; the same extract code runs on a local process pool |
-| Any LLM (labeller and classifier) | One human-labelled, blind eval is the measurement; the classifier stays design only (D28) |
+| LLM account classifier | TLD / keyword rules cover industry and eligibility; design only (D28). The C2 AI second rater is in scope again (D57) |
 | C3 (KEV lift) | Cut by review; C1, C2, C4 remain |
 | Country filter | Not in the brief; weak proxy (D29) |
 | "Recently went end-of-life" | No EOL dates in the file (D2) |
