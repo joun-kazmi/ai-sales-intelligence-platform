@@ -10,12 +10,13 @@ list. Turning IPs into companies is the core hard problem. Read `docs/DATA_NOTES
 any data work: it holds the measured profile (14.6M records, schema, fill rates, entity
 resolution findings, candidate signals with prevalence).
 
-## Current phase: design (no implementation yet)
-We are brainstorming, writing functional and non-functional requirements, high-level design,
-architecture and the final MVP scope. **Do not write implementation code until the MVP doc is
-agreed.** Small throwaway queries against the sample to answer a design question are fine.
+## Current phase: implementation of the agreed MVP
+Design is agreed (2026-10-27): `docs/design/` (`use-cases.md`, `requirements.md`,
+`signals-scoring.md`, `architecture.md`, `mvp.md`). Build what `mvp.md` lists, in its plan
+order; anything outside it needs the owner's go-ahead. Changes to the design are recorded in
+the design docs and `docs/DECISIONS.md`, not just made in code.
 
-- Design docs go in `docs/design/` (e.g. `requirements.md`, `architecture.md`, `mvp.md`).
+- Design docs go in `docs/design/`.
 - Diagrams: Mermaid inside Markdown (renders on GitHub).
 - Record each decision in `docs/DECISIONS.md`: decision, options considered, why, date.
 - Mark claims as measured vs. assumption, like DATA_NOTES does.

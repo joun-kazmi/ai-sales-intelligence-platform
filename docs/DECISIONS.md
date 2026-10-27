@@ -162,3 +162,38 @@ One entry per decision: decision, options considered, why, date.
 - **Options**: labelling assistant + classifier; classifier only; no LLM.
 - **Why**: One well-measured use answers "how you know it's right and what it costs". The
   classifier adds build and evaluation work before Friday.
+
+## D19. Pipeline architecture and feature layer (2026-10-27)
+- **Decision**: Offline pipeline extract -> resolve -> score -> eval, run locally in the MVP. In
+  production: extract per file on stateless workers, then merge -> resolve -> score on merged
+  state. The feature layer keeps all filtered records (nameless ones too) with projected fields,
+  no `http.html` / raw `data`. CDN edge records without a non-infra name are dropped at extract.
+  Details: `docs/design/architecture.md`.
+- **Options**: resolve per file; keep only domain-linked records in the feature layer.
+- **Why**: An IP's cert and its RDP banner can arrive in different files, so per-file resolve
+  would miss links. Nameless records join accounts through their IP. Edge IPs are shared and never
+  assigned by IP, so their nameless records can never join an account. Feature-layer size vs raw
+  is [H] until measured on Wednesday.
+
+## D20. Hosting and artifact delivery (2026-10-27)
+- **Decision**: Render free web service from the private repo. The scored artifact is a private
+  GitHub Release asset, downloaded at app startup with a fine-grained read-only token for this
+  repo, kept in Render env vars. Never in git. The README notes that Render's free disk is
+  ephemeral, so each cold start re-downloads the artifact. A bare deploy (hello world, basic auth,
+  noindex) goes live first, on Wed AM.
+- **Options**: artifact in git or in the Docker image; public release; other free hosts.
+- **Why**: The artifact lists vulnerable organisations (NFR5); keeping it out of git holds even
+  with a private repo and reviewers as collaborators. Deploying early removes hosting risk before
+  the app exists.
+
+## D21. MVP scope (2026-10-27)
+- **Decision**: In scope and cuts as listed in `docs/design/mvp.md`.
+- **Options**: wider filters, LLM classifier, production orchestration in the MVP.
+- **Why**: Deadline Fri 2026-10-30. Signals, scoring and measurement come first (brief).
+
+## D22. Implementation order (2026-10-27)
+- **Decision**: Hosting first (bare deploy), then the record -> domain key (it unblocks the owner's
+  sample build), then scoring, eval, the full app, the full run, write-up.
+- **Options**: pipeline first, deploy on Thursday.
+- **Why**: Hosting and the sample build are the two dependencies outside the code; both are
+  cleared on Wednesday.
