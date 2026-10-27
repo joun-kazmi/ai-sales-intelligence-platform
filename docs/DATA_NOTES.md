@@ -168,6 +168,32 @@ first, unfiltered sample build; the 17,663 blake2b-sampled domains only unless s
 - Scoring run: 20 s, peak RSS 1.2 GB, artifact 4.7 MB for 37,831 accounts (incl. partial
   accounts of non-sampled domains on shared IPs). Two runs give identical artifacts.
 
+**Rebuilt domain sample [M]** (fixed builder `3a0145f`, owner's machine): 6 min 54 s, peak RSS
+~1.3 GB; 206,817 records written (dropped: CDN edge without a name 308,034, noise 6,049, honeypot
+23); 57,125,378 bytes; same 21,963 domains on 45,488 IPs (15,409 shared). The manifest's `-dirty`
+suffix comes from the tracked sample file being overwritten during the run. Re-extracting it
+drops nothing (206,817 rows), and it scores identically to the first build.
+
+**Full-file score [M]** (`e519275`, config `6cf3bc33da1a`, CVE-2023-44487 still on the list,
+tiers 45 / 25): 2 min 21 s wall, **peak RSS 13.5 GB** (fixed, D51), artifact 44,838,912 bytes
+(under the 100 MB cap). 349,520 accounts, 461,365 findings, 55 ubiquitous CVEs. Tiers: T1 6,070 /
+T2 35,083 / T3 136,474 / not ranked 171,893. Eligibility: likely org 85,544 / uncertain 250,997
+(72%) / likely non-prospect 12,979. The sample predicted these well (x20).
+
+**Tuning round on the sample [M]** (17,663 sampled domains; "default view" hides likely
+non-prospects):
+- CVE-2023-44487 off the list (D49), old tiers: T1 306 -> 308, T2 1,710 -> 2,392 (+40%), T3 6,935
+  -> 6,251. 684 accounts moved T3 -> T2. 1,191 of the 2,392 Tier-2 accounts rest only on this CVE
+  ("nginx older than 1.25.3"), and 2,386 of 2,392 Tier-2 accounts are one software finding with no
+  exposure: Tier 2 meant "one web server behind on a patch".
+- Default-view tier sizes by threshold (sample, ~x20 for the full file): 45/25 -> T1 250 / T2
+  2,274; 55/30 -> 55 / 1,772; 55/40 -> **55 / 299**. Chosen 55/40 (D50): T1 ~1,100 and T2 ~6,000
+  on the full file [H]. All 55 Tier-1 accounts have an exposure plus software findings.
+- Frozen config `765eef67e0c5`: all accounts T1 91 / T2 360 / T3 8,500 / not ranked 8,712;
+  default view T1 55 / T2 299 / T3 8,167.
+- Eligibility stays 72% "uncertain": the label mainly hides the obvious non-prospects (hosters, ISP
+  zones, dynamic DNS, residential, parked). Stated as a limitation in the write-up.
+
 ## 6. Recommended pipeline implications (superseded by `docs/DECISIONS.md`)
 1. Pre-filter: drop `tags` in (`honeypot`), modules in noise list, and records whose org class is CDN/ISP *and* whose only names are PTR names.
 2. Build a company table keyed by registrable domain (use a public-suffix list), attach all IPs/ports/signals, dedupe CVEs per product, not per record.

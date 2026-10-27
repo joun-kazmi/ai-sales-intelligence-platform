@@ -41,6 +41,12 @@ is the real cost: ~17.6 TB compressed input and ~1 TB of feature layer per 1,000
 arithmetic from these measurements). The MVP processes one file locally; scale-out is design
 only.
 
+Scoring the full feature layer [M] (`e519275`, config `6cf3bc33da1a`): 2 min 21 s wall, **peak RSS
+13.5 GB** on the 15 GB machine, artifact 44.8 MB. Too close to OOM: attribution materialized the
+whole feature layer twice. Fixed (D51): streamed views plus a DuckDB `memory_limit` (default 6 GB)
+with a spill directory; on the sample the peak fell from 1,094 to 750 MB with identical output.
+The full-file peak is re-measured on the next full scoring run.
+
 **NFR2. Raw retention is a trade-off.** Deleting raw files after extraction is cheapest, but
 then a new signal cannot be backfilled. Production answer: keep raw in cheap cold object storage
 for N days (N set by cost; backfill is possible only within that window), and store an extracted

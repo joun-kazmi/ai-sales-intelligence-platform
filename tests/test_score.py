@@ -7,6 +7,7 @@ from salesintel.pipeline import extract as extract_mod
 from salesintel.pipeline import score as sc
 
 CFG = sc.load_config()
+FROZEN = "765eef67e0c5"
 TS = "2026-10-26T10:00:00.000000"
 
 
@@ -51,8 +52,8 @@ WORKED = {
 }
 
 
-@pytest.mark.parametrize("domain,points,tier", [("a.com", 48, 1), ("b.com", 45, 1), ("c.com", 27, 2),
-                                                 ("d.com", 4, 3), ("e.com", 0, 0)])
+@pytest.mark.parametrize("domain,points,tier", [("a.com", 48, 2), ("b.com", 45, 2), ("c.com", 27, 3),
+                                                 ("d.com", 29, 3), ("e.com", 0, 0)])
 def test_worked_example(domain, points, tier):
     got, fs = total(WORKED[domain], domain)
     assert got == points
@@ -96,9 +97,21 @@ def test_exposure_awarded_once_and_by_module_only():
 
 
 def test_ubiquitous_cve_awards_nothing_and_no_marker():
-    rows = [row(product="nginx", version="1.24.0", vulns=[vuln("CVE-2023-44487", kev=True, epss=1.0)])]
+    rows = [row(product="Apache httpd", version="2.4.58", vulns=[vuln("CVE-2013-4365", epss=0.14, cvss=7.5)])]
     got, fs = total(rows)
-    assert got == 0 and not any(f.kind == "marker_kev" for f in fs)
+    assert got == 0 and not any(f.kind.startswith("marker_") for f in fs)
+
+
+def test_exposure_plus_one_more_problem_reaches_tier_1():
+    rows = [row(module="rdp", port=3389), row(product="x", version="1", vulns=[vuln("CVE-2021-9", epss=0.4)])]
+    got, _ = total(rows)
+    assert got == 60 and got >= CFG.raw["tiers"]["tier1"]
+
+
+def test_frozen_config_version():
+    # Weights are frozen before labelling (D28, D50). Changing scoring.toml or the ubiquitous list
+    # changes this version and needs a recorded decision.
+    assert CFG.version == FROZEN
 
 
 def test_cve_2026_scores_and_marks():
@@ -171,7 +184,7 @@ def test_score_end_to_end_artifact(tmp_path):
     man = sc.score(tmp_path / "out" / "features" / m["input_sha256"], art)
     con = duckdb.connect(str(art), read_only=True)
     accounts = con.execute("SELECT domain, score, tier, rank FROM accounts ORDER BY rank").fetchall()
-    assert accounts == [("acme.com", 45, 1, 1), ("beta.org", 15, 3, 2)]
+    assert accounts == [("acme.com", 45, 2, 1), ("beta.org", 15, 3, 2)]
     funnel = dict(((a, c), n) for a, c, n in con.execute("SELECT * FROM funnel").fetchall())
     assert funnel[("via_ip", "customer_or_isp")] == 1 and funnel[("unresolved", "cloud_hosting")] == 1
     keys = dict(con.execute("SELECT key, value FROM manifest").fetchall())

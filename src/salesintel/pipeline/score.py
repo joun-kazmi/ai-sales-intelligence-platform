@@ -346,12 +346,21 @@ COLUMNS = ["domain", "attribution", "source", "ip", "port", "module", "timestamp
            "has_docker", "scan_hostname", "http_host", "hostnames"]
 
 
-def score(features: Path, out: Path, cfg: Config | None = None) -> dict:
+def connect(memory_limit: str, temp_dir: Path) -> duckdb.DuckDBPyConnection:
+    """Bounded DuckDB: spills to temp_dir instead of growing past memory_limit (NFR1)."""
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(config={"memory_limit": memory_limit, "temp_directory": str(temp_dir)})
+    con.execute("SET enable_progress_bar = false")
+    con.execute("SET preserve_insertion_order = false")
+    return con
+
+
+def score(features: Path, out: Path, cfg: Config | None = None, memory_limit: str = "6GB",
+          temp_dir: Path | None = None) -> dict:
     started = time.monotonic()
     cfg = cfg or load_config()
     fmanifest = orjson.loads((features / "manifest.json").read_bytes())
-    con = duckdb.connect()
-    con.execute("SET enable_progress_bar = false")
+    con = connect(memory_limit, temp_dir or out.parent / ".duckdb_tmp")
     attribute(con, features)
     funnel = con.execute(
         "SELECT attribution, coalesce(infra_class, 'customer_or_isp'), count(*) FROM attributed GROUP BY ALL ORDER BY ALL"
@@ -433,8 +442,10 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("features", type=Path, help="features/<sha256> partition")
     ap.add_argument("--out", type=Path, required=True, help="artifact path (.duckdb, gitignored)")
+    ap.add_argument("--memory-limit", default="6GB", help="DuckDB memory limit; spills to disk beyond it")
+    ap.add_argument("--temp-dir", type=Path, help="spill directory (default: <out dir>/.duckdb_tmp)")
     args = ap.parse_args(argv)
-    m = score(args.features, args.out)
+    m = score(args.features, args.out, memory_limit=args.memory_limit, temp_dir=args.temp_dir)
     print(orjson.dumps(m, option=orjson.OPT_INDENT_2).decode())
 
 

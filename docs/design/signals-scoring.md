@@ -68,7 +68,7 @@ sample [M]) is labelled **verified** instead of "potential" (D35). Points are th
 
 | Family | Finding | Points |
 |---|---|---|
-| Exposure | Exposed remote access / database / ICS service, detected by **Shodan module**, never port alone. Modules seen in the sample [M]: `rdp`, `rdpeudp`, `smb`, `telnet`, `mysql`, `ms-sql`, `postgresql`, `mongodb`, `redis`, `memcache`, `couchdb`, `oracle-tns`, `modbus`, `s7`, `dnp3`, `ethernetip`, `bacnet`, `fox`. Also the **Docker API (port 2375), only when the module confirms it**. VNC / Elasticsearch / Docker module names to confirm on the full run. | 45 (reaches Tier 1 alone) |
+| Exposure | Exposed remote access / database / ICS service, detected by **Shodan module**, never port alone. Modules seen in the sample [M]: `rdp`, `rdpeudp`, `smb`, `telnet`, `mysql`, `ms-sql`, `postgresql`, `mongodb`, `redis`, `memcache`, `couchdb`, `oracle-tns`, `modbus`, `s7`, `dnp3`, `ethernetip`, `bacnet`, `fox`. Also the **Docker API (port 2375), only when the module confirms it**. VNC / Elasticsearch / Docker module names to confirm on the full run. | 45 (Tier 2 alone; Tier 1 with one more finding, D50) |
 | Software, **per product + version** | At most one CVE award: potential known-exploited CVE (`kev` true) **25**, OR potential CVE with EPSS >= 0.1 and CVSS >= 7 **15**. Plus end-of-life (`eol-product`) **15**. Capped at **30 per product**. | 0-30 per product |
 | Software, OS | End-of-life operating system (`eol-os` tag; 0.04% of records [M]) | 5, once per account, inside the account cap |
 | Software, account cap | Sum over products capped at **40** (potential, unverified matches never outweigh more than one observed exposure plus a little) | <= 40 |
@@ -81,8 +81,9 @@ Rules:
   `src/salesintel/pipeline/ubiquitous_cves.txt`: every CVE that matches >= 90% of the observed
   CVE-bearing versions of a product with >= 50 attributed accounts (version-independent: it only
   says "runs this product"), measured on the domain-complete sample (54 CVEs: the 2009-2013
-  Apache module list, the newest CVE-2026 Apache / OpenSSH batch), plus CVE-2023-44487
-  (provisional; on 61% of nginx accounts). A share-of-accounts cut-off was rejected: prevalence
+  Apache module list, the newest CVE-2026 Apache / OpenSSH batch). CVE-2023-44487 was on it
+  provisionally and was taken off (D49): it is version-dependent (61% of nginx accounts), like
+  CVE-2024-38475 for Apache. A share-of-accounts cut-off was rejected: prevalence
   falls smoothly and the prevalent CVEs that award points are mostly real patch lag.
 - **CVE-2026-\* IDs** are scored like any other CVE, from the record's own CVSS / EPSS / KEV
   (spot-checked as genuine, DATA_NOTES 5b, D42). They also show a 0-point why-now marker,
@@ -90,8 +91,11 @@ Rules:
 - **Certificate state** is exactly one of: **expired** (neglect, 5) / **expires within 30 days of
   the scan** (why-now marker, 0) / **ok**. Per certificate; an account shows the expired finding if
   any cert is expired and the marker if any cert is in the 30-day window (D38).
-- **Tiers:** Tier 1 >= 45, Tier 2 25-44, Tier 3 1-24; 0 = not ranked (reachable through plays).
-  Fixed thresholds, so tiers mean the same in every monthly file.
+- **Tiers (tuned once, frozen, D50):** Tier 1 >= 55, Tier 2 40-54, Tier 3 1-39; 0 = not ranked
+  (reachable through plays). Tier 1 = an observed exposure plus at least one more problem; Tier 2 =
+  an exposure alone, or several independent problems (software at the 40 cap, or a known-exploited
+  match on end-of-life software plus heavy neglect); Tier 3 = a single patch-lag match and minor
+  findings. Fixed thresholds, so tiers mean the same in every monthly file.
 - **Deterministic order:** score desc, then number of distinct findings desc, then domain asc. The
   baselines in section 4 use the same tie-break.
 - Every finding renders one sentence with its points and evidence; the breakdown sums to the score.
@@ -101,16 +105,18 @@ Rules:
 
 | Account | Evidence | Points | Score | Tier |
 |---|---|---|---|---|
-| A | nginx 1.18.0 with a potential known-exploited CVE (25) and EOL (15) -> 30; OpenSSH 7.4 with a likely-exploitable potential CVE (15); software cap 40; expired cert (5), deprecated TLS (3) | 40 + 8 | 48 | 1 |
-| B | Exposed MongoDB (module `mongodb`), nothing else | 45 | 45 | 1 |
-| C | Apache 2.4.58 with a potential known-exploited CVE; HTTPS without HSTS | 25 + 2 | 27 | 2 |
-| D | nginx 1.24.0 whose only strong CVE is CVE-2023-44487 (ubiquitous, 0); version disclosed, no HSTS | 0 + 4 | 4 | 3 |
+| A | nginx 1.18.0 with a potential known-exploited CVE (25) and EOL (15) -> 30; OpenSSH 7.4 with a likely-exploitable potential CVE (15); software cap 40; expired cert (5), deprecated TLS (3) | 40 + 8 | 48 | 2 |
+| B | Exposed MongoDB (module `mongodb`), nothing else | 45 | 45 | 2 |
+| B+ | B plus OpenSSH 7.4 with a likely-exploitable potential CVE | 45 + 15 | 60 | 1 |
+| C | Apache 2.4.58 with a potential known-exploited CVE; HTTPS without HSTS | 25 + 2 | 27 | 3 |
+| D | nginx 1.24.0 whose only strong CVE is CVE-2023-44487 (KEV, version-dependent); version disclosed, no HSTS | 25 + 4 | 29 | 3 |
 | E | Fortinet appliance, VPN login page, cert expiring in 12 days | 0 (facts + marker) | 0 | not ranked; in the edge-appliance play with a why-now marker |
 
-Why this order is sensible: A and B both reach Tier 1, from several potential exploitable matches
-plus neglect, and from one observed exposure. C is a single unverified match. D only has the
-everywhere-CVE, which says nothing specific about the account. E is a sales fact (attack surface,
-existing security spend), not evidence of need, so it lives in a play.
+Why this order is sensible: B+ is the only Tier 1, because an observed exposure is corroborated
+by a second, independent problem. A (several potential exploitable matches plus neglect) and B (one
+observed exposure) are strong but single-kind evidence: Tier 2. C and D are each one web server
+behind on a patch: Tier 3, ordered by their small neglect findings. E is a sales fact (attack
+surface, existing security spend), not evidence of need, so it lives in a play.
 
 ## 3. Feature schema: scoring rules to retained fields
 The feature layer keeps these fields per filtered record (no `http.html`, no raw `data`).

@@ -2,8 +2,8 @@
 # Rule: the CVE matches >= 90% of the observed CVE-bearing versions of a product with >= 50
 # attributed accounts (version-independent: says only 'runs this product'), measured on the
 # domain-complete sample (features bcd01d2d7818, blocklist faf9761a45c4), 2026-10-27.
-# Plus CVE-2023-44487 (provisional, D26; on 61% of nginx accounts). One CVE per line.
-CVE-2023-44487
+# CVE-2023-44487 was on this list provisionally (D26) and was taken off by the owner (D49): it is
+# version-dependent (nginx < 1.25.3), like CVE-2024-38475 for Apache, which scores. One CVE per line.
 CVE-2007-2768  # OpenSSH, 23/23 versions
 CVE-2007-4723  # Apache httpd, 63/65 versions
 CVE-2008-3844  # OpenSSH, 23/23 versions

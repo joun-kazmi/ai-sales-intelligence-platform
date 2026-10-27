@@ -231,6 +231,7 @@ One entry per decision: decision, options considered, why, date.
 
 ## D25. Scoring revision (2026-10-27, external review)
 - **Status**: extended by D35, D36, D38 (2026-10-27, second external review).
+- **Status**: tier thresholds superseded by D50 (2026-10-28).
 - **Decision**: Exposed remote access / DB / ICS detected by Shodan module (not port) scores 45
   and reaches Tier 1 alone. Per product + version: at most one CVE award (potential KEV 25, or
   EPSS >= 0.1 and CVSS >= 7 15) plus EOL 15, capped at 30 per product; software total capped at
@@ -421,6 +422,7 @@ One entry per decision: decision, options considered, why, date.
   so readers need no flags.
 
 ## D47. Ubiquitous-CVE list: version-independent CVEs (2026-10-27)
+- **Status**: CVE-2023-44487 taken off the list by D49 (2026-10-28).
 - **Decision**: The ubiquitous-CVE list (award 0, no marker) is every CVE that matches >= 90% of
   the observed CVE-bearing versions of a product with >= 50 attributed accounts, measured on the
   domain-complete sample (54 CVEs), plus CVE-2023-44487 (provisional). The list is a versioned
@@ -445,3 +447,35 @@ One entry per decision: decision, options considered, why, date.
   servers (e.g. 750 IPs, 97% numbered hostnames); they own their network, so the org-match rule
   alone marked them likely-org. The hoster rule moved 28 of them out of the default Tier 1 view
   (276 -> 248).
+
+## D49. CVE-2023-44487 scores like any other CVE (2026-10-28)
+- **Decision**: Take CVE-2023-44487 off the ubiquitous-CVE list (owner's call). The list is now
+  the 54 measured version-independent CVEs only.
+- **Options**: keep it listed (D26 provisional).
+- **Why**: It is version-dependent (nginx < 1.25.3, 61% of nginx accounts), exactly like
+  CVE-2024-38475 for Apache (58%), which scores; listing one and not the other was inconsistent.
+  Measured effect (sample, old tiers): Tier 2 +40%, half of Tier 2 resting on this CVE alone,
+  which D50 addresses.
+
+## D50. Tier thresholds 55 / 40, tuned once and frozen (2026-10-28)
+- **Decision**: Tier 1 >= 55, Tier 2 40-54, Tier 3 1-39. Tier 1 = an observed exposure plus at
+  least one more problem; Tier 2 = an exposure alone or several independent problems; Tier 3 = a
+  single patch-lag match and minor findings. Points are unchanged. This was the one tuning round;
+  the scoring config is **frozen at `765eef67e0c5`** (scoring.toml + ubiquitous list) before
+  labelling, and a test pins that version.
+- **Options**: 45 / 25 (D25): Tier 1 ~5,000 and Tier 2 ~45,000 on the full file; 55 / 30: Tier 2
+  still ~35,000, mostly "one known-exploited match on end-of-life software"; 50 / 30.
+- **Why**: With 45 / 25, Tier 1 was 6,070 accounts on the full file, too many to be a top tier
+  for an SDR, and Tier 2 was "one web server behind on a patch". 55 / 40 gives ~1,100 / ~6,000 on
+  the full file [H, x20 from the sample], and each tier has one plain meaning. An exposure still
+  reaches Tier 1 with corroboration; unverified software matches alone never do, consistent with
+  the software cap.
+
+## D51. Bounded memory for scoring (2026-10-28)
+- **Decision**: Attribution uses views streamed from Parquet instead of materialized tables, and
+  scoring runs DuckDB with `memory_limit` (default 6 GB, `--memory-limit`) and a spill directory
+  (`<out dir>/.duckdb_tmp`, gitignored under `out/`).
+- **Options**: buy headroom with a bigger machine; score in chunks of domains.
+- **Why**: The full-file score peaked at 13.5 GB on a 15 GB machine: the feature layer was held
+  in memory twice. On the sample the change cut the peak from 1,094 to 750 MB with identical
+  output; the full-file peak is re-measured on the next run.

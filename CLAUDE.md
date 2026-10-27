@@ -43,6 +43,7 @@ the design docs and `docs/DECISIONS.md`, not just made in code.
 
 ## Working agreements
 - Answer what is asked; do not build beyond the request.
+- Branches: one per piece of work, named `feature/<feature>` (e.g. `feature/score-tuning`).
 - Git: no Claude/Anthropic/AI attribution anywhere (no Co-Authored-By trailers, no
   "Generated with" lines in commits, PRs or docs). Commits use the owner's identity only.
 - Never commit secrets, `.env`, the raw dataset, or generated `*.duckdb` / `*.parquet`.

@@ -2,8 +2,10 @@
 # records sha256 of this file. Weights are frozen before labelling (D28, D37).
 
 [tiers]
-tier1 = 45
-tier2 = 25  # tier 3 is 1 .. tier2-1; 0 = not ranked
+# Tuned once on the domain-complete sample, then frozen (D50). Tier 1 = an observed exposure plus
+# at least one more problem; tier 2 = an exposure alone or several independent problems.
+tier1 = 55
+tier2 = 40  # tier 3 is 1 .. tier2-1; 0 = not ranked
 
 [points]
 exposed_service = 45

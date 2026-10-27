@@ -14,14 +14,13 @@ import duckdb
 
 
 def attribute(con: duckdb.DuckDBPyConnection, features: Path) -> None:
-    """Create table `attributed` (all feature columns + rid, domain, attribution, source)."""
-    con.execute(
-        f"""
-        CREATE OR REPLACE TABLE feat AS
-        SELECT row_number() OVER () AS rid, *
-        FROM read_parquet('{features}/part-*.parquet')
-        """
-    )
+    """Create view `attributed` (all feature columns + domain, attribution, source).
+
+    `feat` and `attributed` are views streamed from Parquet; only the per-IP index is a table.
+    Materializing them held the whole 8.5M-row feature layer in memory twice (13.5 GB peak on the
+    full file, DATA_NOTES 5c).
+    """
+    con.execute(f"CREATE OR REPLACE VIEW feat AS SELECT * FROM read_parquet('{features}/part-*.parquet')")
     con.execute(
         """
         CREATE OR REPLACE TABLE ip_domains AS
@@ -38,7 +37,7 @@ def attribute(con: duckdb.DuckDBPyConnection, features: Path) -> None:
     )
     con.execute(
         """
-        CREATE OR REPLACE TABLE attributed AS
+        CREATE OR REPLACE VIEW attributed AS
         SELECT f.*,
             CASE
                 WHEN len(f.names) > 0 THEN f.names[1].domain
