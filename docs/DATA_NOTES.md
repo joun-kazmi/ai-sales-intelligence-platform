@@ -129,6 +129,24 @@ extractor v1, blocklist `faf9761a45c4`, 2026-10-27:
   184 of them shared (2+ candidate domains in the full index); raw pass ~31k records/s, single
   process.
 
+**Full file [M]**, owner's machine (8 cores, 7 workers), extractor at `c61315d`, blocklist
+`faf9761a45c4`, input sha256 `71cb1991…b5b7`, 2026-10-27:
+- Extract: **9 min 07 s wall (~26.7k records/s), peak RSS ~0.5 GB**; feature layer
+  **1,031,306,361 bytes** (0.84% of raw, 5.9% of the 17.6 GB zst).
+- Funnel (of 14,608,407 records): dropped CDN edge without a customer name 5,229,445 (35.8%),
+  noise modules 573,883 (3.9%), honeypot 250,439 (1.7%), parse error 1; **kept 8,554,639
+  (58.6%)**: cloud / hosting 4,990,119, customer or ISP network 3,149,747, CDN records naming a
+  domain 414,773. **Records with at least one candidate name: 1,328,323 (9.1%)**, matching the
+  line sample (9.1%) and DATA_NOTES 4 (~9%).
+- Candidate-name index: **717,056 IPs, 436,171 distinct candidate domains** (before eligibility;
+  DATA_NOTES 4c had estimated 100-300k real vanity domains [H], so many of these are expected to
+  be ISP / hoster / personal names for the eligibility label).
+- Domain-complete sample (modulus 20): 5 min 11 s, peak RSS ~0.5 GB. **21,963 domains (5.0%) on
+  45,488 IPs, 15,409 of them shared (33.9%)**; 520,923 records, 121 MB at zstd level 10, 78 MB
+  after the owner recompressed it (`zstd --ultra -22 --long=27`). Re-extracting it dropped
+  308,034 records (59%) as CDN edge without a name: every record of a sampled CDN edge IP was
+  included. Fixed in the builder (D46); the rebuilt sample should hold ~213k records [H].
+
 ## 6. Recommended pipeline implications (superseded by `docs/DECISIONS.md`)
 1. Pre-filter: drop `tags` in (`honeypot`), modules in noise list, and records whose org class is CDN/ISP *and* whose only names are PTR names.
 2. Build a company table keyed by registrable domain (use a public-suffix list), attach all IPs/ports/signals, dedupe CVEs per product, not per record.

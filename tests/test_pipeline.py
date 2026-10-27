@@ -207,3 +207,25 @@ def test_sample_carries_full_ip_domain_count(tmp_path):
     # Schema fields survive the strip.
     acme = next(r for r in got if r.get("vulns"))
     assert acme["vulns"]["CVE-1"]["cvss"] == 5.0 and acme["ssl"]["versions"] == ["TLSv1.2"]
+
+
+def test_sample_applies_extractor_drop_rules(tmp_path):
+    edge = "192.0.2.50"
+    records = [
+        rec(ip_str=edge, tags=["cdn"], _shodan={"module": "https", "options": {"hostname": "acme.com"}}),
+        rec(ip_str=edge, tags=["cdn"]),                               # unrelated edge record: dropped
+        rec(ip_str=edge, tags=["cdn"], port=8080),                    # dropped
+        rec(ip_str=edge, tags=["honeypot"], hostnames=["x.acme.com"]),  # dropped
+        rec(ip_str=edge, _shodan={"module": "x11"}),                  # noise: dropped
+    ]
+    src = tmp_path / "in.jsonl.zst"
+    _write_zst(src, records)
+    m = extract_mod.extract(src, tmp_path / "out", workers=1)
+    out = tmp_path / "sample.jsonl.zst"
+    sm = sample.build(src, tmp_path / "out" / "features" / m["input_sha256"], out, modulus=1)
+    assert sm["counts"]["written"] == 1
+    assert sm["counts"]["dropped_cdn_edge_unnamed"] == 2
+    assert sm["counts"]["dropped_honeypot"] == 1 and sm["counts"]["dropped_noise_module"] == 1
+    # Readable with default decoder limits despite the long window.
+    lines = zstandard.ZstdDecompressor().stream_reader(io.BytesIO(out.read_bytes())).read().splitlines()
+    assert len(lines) == 1

@@ -24,8 +24,14 @@ import duckdb
 import orjson
 import zstandard
 
+from salesintel.pipeline import infra
 from salesintel.pipeline.atomic import atomic_file, code_commit, file_sha256, write_json
 from salesintel.pipeline.extract import iter_batches
+from salesintel.pipeline.project import project
+
+# Long-window zstd keeps the committed sample well under GitHub's 100 MB file limit. Window 2^27
+# is the default decoder limit of zstd and python-zstandard, so readers need no extra flags.
+ZSTD_PARAMS = zstandard.ZstdCompressionParameters.from_level(19, window_log=27, enable_ldm=True, threads=-1)
 
 # Large fields the feature schema (D30) never reads. CVE summaries/references alone are ~40% of
 # a sampled record; cert chains and favicons most of the rest (DATA_NOTES 5c).
@@ -101,10 +107,13 @@ def build(raw: Path, features: Path, out: Path, modulus: int) -> dict:
     if raw_hash != fmanifest["input_sha256"]:
         raise SystemExit("raw file does not match the feature partition's input_sha256")
 
+    lists = infra.load()
+    if lists.version != fmanifest["blocklist_version"]:
+        raise SystemExit("blocklist changed since the features were extracted; re-extract first")
     ips, stats = sampled_ips(features, modulus)
     counts: Counter = Counter()
     with atomic_file(out) as tmp, open(tmp, "wb") as fh:
-        with zstandard.ZstdCompressor(level=10).stream_writer(fh) as zw:
+        with zstandard.ZstdCompressor(compression_params=ZSTD_PARAMS).stream_writer(fh) as zw:
             for batch in iter_batches(raw, 10_000):
                 for line in batch:
                     counts["records"] += 1
@@ -118,6 +127,12 @@ def build(raw: Path, features: Path, out: Path, modulus: int) -> dict:
                         rec = orjson.loads(line)
                     except orjson.JSONDecodeError:
                         counts["parse_error"] += 1
+                        continue
+                    # Same drop rules as the extractor (CDN edge without a name, honeypot, noise):
+                    # those records can never reach scoring, so they only cost sample bytes.
+                    _, reason = project(rec, lists)
+                    if reason != "kept":
+                        counts[f"dropped_{reason}"] += 1
                         continue
                     strip(rec)
                     rec["_sample"] = {"ip_domain_count": ips[ip], "modulus": modulus, "hash": "blake2b-8"}

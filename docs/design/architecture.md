@@ -66,7 +66,7 @@ flowchart LR
 
 | Concern | MVP (one file) | Production (hundreds-thousands of files / month) |
 |---|---|---|
-| Extract | Local process pool. Throughput: measured in Wednesday's full run (the profiling pass took 754 s on 8 cores [M]) | Same function on N stateless workers fed by a queue of file hashes; files are independent, so workers scale out per file |
+| Extract | Local process pool: full file in 9 min 07 s on 8 cores / 7 workers (~26.7k records/s, peak RSS ~0.5 GB), feature layer 1.03 GB [M] | Same function on N stateless workers fed by a queue of file hashes; files are independent, so workers scale out per file |
 | Raw storage | Owner's disk | Cold object storage for N days, then deleted (D10) |
 | Feature layer | Local Parquet | Partitioned Parquet in object storage, one partition per file hash |
 | Order of steps | extract -> attribution -> score (merge is trivial with one file) | extract -> **merge -> attribution -> score**. Attribution must run on merged state: an IP's cert and its RDP banner can arrive in different files |

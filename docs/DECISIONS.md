@@ -408,3 +408,14 @@ One entry per decision: decision, options considered, why, date.
   sample has to reach the development sandbox through git, and the full-file sample would
   otherwise be roughly 300+ MB [H]. Re-extraction from the sample still works because every
   schema field is kept.
+
+## D46. Sample builder applies the extractor's drop rules; long-window zstd (2026-10-27)
+- **Decision**: The sample builder runs every candidate record through the extractor's own
+  `project()` and skips what the extractor would drop (CDN edge without a name, honeypot, noise
+  modules). It writes zstd level 19 with a 2^27 window and long-distance matching, and refuses
+  to run if the blocklist changed since the features were extracted.
+- **Options**: re-implement the drop rules in the builder; keep level 10.
+- **Why**: Measured on the full file: 308,034 of 520,923 sampled records (59%) were unnamed CDN
+  edge records on sampled edge IPs, which the extractor drops anyway. Calling `project()` keeps
+  the two rule sets identical by construction. The 2^27 window is the default decoder limit,
+  so readers need no flags.

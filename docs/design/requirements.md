@@ -33,10 +33,13 @@ Priority: **Must** = in the MVP due Fri 2026-10-30. **Nice** = only if time allo
 **NFR1. Volume: hundreds to thousands of files per month.**
 Each file is processed independently and in parallel, idempotently (keyed by the file's content
 hash, so a re-run or duplicate delivery is a no-op), then merged by domain.
-Evidence: one file = 14.6M records, 17.6 GB zstd [M]. Only measured throughput is quoted: the
-profiling pass took 754 s on 8 cores (7 workers) [M]; the extractor's own throughput is measured
-in Wednesday's full run. Storage is the real cost: ~17.6 TB compressed per 1,000 files (size
-arithmetic). The MVP processes one file locally; scale-out is design only.
+Evidence [M], full file (14,608,407 records, 17.6 GB zstd), owner's machine, 8 cores / 7
+workers, extractor at `c61315d`: **9 min 07 s wall, ~26.7k records/s, peak RSS ~0.5 GB**, feature
+layer **1.03 GB** (0.84% of the 122.8 GB raw, 5.9% of the compressed input). Memory stays flat
+(bounded in-flight batches), so files can run side by side on one machine as RAM allows. Storage
+is the real cost: ~17.6 TB compressed input and ~1 TB of feature layer per 1,000 files (size
+arithmetic from these measurements). The MVP processes one file locally; scale-out is design
+only.
 
 **NFR2. Raw retention is a trade-off.** Deleting raw files after extraction is cheapest, but
 then a new signal cannot be backfilled. Production answer: keep raw in cheap cold object storage

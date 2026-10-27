@@ -43,8 +43,8 @@ finding, the human eval (C2), the hosted list, the write-up.
 | Fri 10-30 AM | Eval results (precision@20, C1 forward-DNS match rate, C4); fix-only changes, no weight changes | |
 | Fri PM | README write-up | Final check; submit with the credentials note |
 
-**Throughput claims:** only measured figures are quoted. The profiling pass took 754 s for 14.6M
-records on 8 cores [M]; the extractor's own throughput is measured in Wednesday's full run.
+**Throughput claims:** only measured figures are quoted. Full-file extract: 9 min 07 s on 8 cores
+/ 7 workers, ~26.7k records/s, peak RSS ~0.5 GB, feature layer 1.03 GB [M] (DATA_NOTES 5c).
 
 **Hosted artifact hard cap: 100 MB** (NFR3). Publishing fails above it; the fallback is Tier 1-2
 accounts with full evidence plus counts for the rest.
