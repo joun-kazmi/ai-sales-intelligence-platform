@@ -40,6 +40,27 @@ GEAR = {"appliance": "len(appliances) > 0", "cdn": "list_contains(facts, 'behind
 ELIGIBILITY = {"default": "eligibility != 'likely_non_prospect'", "likely_org": "eligibility = 'likely_org'", "all": None}
 WHY_NOW_TEXT = {"kev": "known-exploited CVE", "cve_2026": "CVE published in 2026", "cert_expiring": "cert expiring"}
 
+# Short labels for the list view; the full sentence stays in the title attribute and detail page.
+MODULE_SHORT = {"rdp": "RDP", "rdpeudp": "RDP", "smb": "SMB", "telnet": "Telnet", "vnc": "VNC", "mysql": "MySQL",
+                "ms-sql": "MS SQL", "postgresql": "PostgreSQL", "mongodb": "MongoDB", "redis": "Redis",
+                "memcache": "Memcached", "couchdb": "CouchDB", "oracle-tns": "Oracle DB", "elastic": "Elasticsearch",
+                "docker": "Docker API", "modbus": "Modbus", "s7": "Siemens S7", "dnp3": "DNP3",
+                "ethernetip": "EtherNet/IP", "bacnet": "BACnet", "fox": "Niagara Fox"}
+KIND_SHORT = {"eol_os": "EOL OS", "cert_expired": "expired cert", "deprecated_tls": "old TLS",
+              "self_signed_public": "self-signed cert", "version_disclosed": "version leak", "no_hsts": "no HSTS"}
+
+
+def short_tag(kind: str, module: str | None, product: str | None, version: str | None, cves: str | None,
+              sentence: str) -> str:
+    if kind == "exposed_service":
+        return f"{MODULE_SHORT.get(module or '', module or 'service')} exposed"
+    if kind == "software":
+        name = " ".join(x for x in (product, version) if x) or "software"
+        marks = (["KEV"] if cves and '"kev":true' in cves else []) + (["EOL"] if "end-of-life" in sentence else [])
+        return " · ".join([name[:32], *marks])
+    return KIND_SHORT.get(kind, kind.replace("_", " "))
+
+
 LIST_COLUMNS = ["rank", "domain", "score", "tier", "reasons", "why_now", "attribution_label", "eligibility",
                 "eligibility_reason", "n_ips"]
 
@@ -129,6 +150,25 @@ class Store:
         for x in findings:
             x["cves"] = json.loads(x["cves"] or "[]")
         return dict(zip(cols, row)), findings
+
+    def tags(self, domains: list[str]) -> dict[str, list[dict]]:
+        """Scored findings of the given accounts as short tags (family, label, full sentence)."""
+        if not domains:
+            return {}
+        rows = self._cur().execute(
+            """SELECT domain, family, kind, module, product, version, cves, sentence FROM findings
+               WHERE points > 0 AND domain IN (SELECT unnest(?)) ORDER BY domain, points DESC, kind, sentence""",
+            [domains]).fetchall()
+        out: dict[str, list[dict]] = {}
+        for d, family, kind, module, product, version, cves, sentence in rows:
+            out.setdefault(d, []).append({"family": family, "sentence": sentence,
+                                          "label": short_tag(kind, module, product, version, cves, sentence)})
+        return out
+
+    def summary(self) -> dict[str, int]:
+        """Header strip: tier counts in the default view (likely non-prospects hidden)."""
+        return {"tier1": self.count(Filters(tier="1")), "tier2": self.count(Filters(tier="2")),
+                "ranked": self.count(Filters(tier="ranked"))}
 
     def play_counts(self) -> dict[str, int]:
         return {k: self.count(Filters(tier="all", play=k)) for k in PLAYS}
