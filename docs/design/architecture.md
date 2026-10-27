@@ -1,7 +1,7 @@
 # Architecture
 
 Status: agreed 2026-10-27, revised the same day after external review. Decisions D19-D20,
-D24, D30-D32 in `docs/DECISIONS.md` (D9-D11 also apply).
+D24, D30-D32, D40 in `docs/DECISIONS.md` (D9-D11 also apply).
 **[M]** measured, **[H]** hypothesis.
 
 ## Overview
@@ -63,13 +63,24 @@ flowchart LR
   cold start re-downloads it; the README says so.
 
 ## Scaling: what the MVP builds vs the design
+
 | Concern | MVP (one file) | Production (hundreds-thousands of files / month) |
 |---|---|---|
 | Extract | Local process pool. Throughput: measured in Wednesday's full run (the profiling pass took 754 s on 8 cores [M]) | Same function on N stateless workers fed by a queue of file hashes; files are independent, so workers scale out per file |
 | Raw storage | Owner's disk | Cold object storage for N days, then deleted (D10) |
 | Feature layer | Local Parquet | Partitioned Parquet in object storage, one partition per file hash |
 | Order of steps | extract -> attribution -> score (merge is trivial with one file) | extract -> **merge -> attribution -> score**. Attribution must run on merged state: an IP's cert and its RDP banner can arrive in different files |
-| Merge | n/a | Coverage-aware: new / still present / resolved / not observed, `first_seen` / `last_seen`. "Resolved" needs a comparable re-probe (FR11, D11, D31) |
+| Merge | n/a | Coverage-aware, `first_seen` / `last_seen`; see "FR11 merge invariants" below |
 | Query engine | DuckDB on one machine | DuckDB while the merged state fits one node [H]; the same SQL moves to a warehouse beyond that |
 | App data | One artifact per run | Versioned artifact per scoring run; app switches on restart |
 | Re-scoring | Re-run score on the feature layer | Same; only new extractors need raw (within N days) |
+
+## FR11 merge invariants (design only)
+Findings are keyed by (account, finding type, product + version or service, IP:port). Merging a
+file is idempotent (a file hash already merged is a no-op) and order-independent (state is
+derived from scan timestamps, not arrival order), so `first_seen` never moves later and
+`last_seen` never moves earlier. On each merged file a finding is **new** (first observation),
+**still present**, **resolved** only after a comparable re-probe (same IP:port, same module, a
+banner was returned, and the finding is absent), or otherwise **not observed**; missing never
+means fixed. Attribution re-runs on the merged state, so a finding follows its IP to whichever
+account the merged evidence supports, and every state change keeps the file hash that caused it.

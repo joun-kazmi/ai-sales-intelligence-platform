@@ -1,31 +1,33 @@
 # Requirements
 
 Status: agreed 2026-10-27, revised the same day after external review. Derived from
-`use-cases.md` (UC1-UC4) and `docs/ASSIGNMENT.md`. Decisions D9-D14, D23-D33 in `docs/DECISIONS.md`. **[M]** measured, **[H]** hypothesis.
+`use-cases.md` (UC1-UC4) and `docs/ASSIGNMENT.md`. Decisions D9-D14, D23-D41 in `docs/DECISIONS.md`. **[M]** measured, **[H]** hypothesis.
 
 Priority: **Must** = in the MVP due Fri 2026-10-30. **Nice** = only if time allows.
 **Design** = specified and shown in the architecture, not built in the MVP.
 
 ## Functional: hosted app
+
 | ID | Requirement | UC | Priority |
 |---|---|---|---|
-| FR1 | Ranked account list: domain, research-priority score, tier, top 2-3 reasons in plain English, "why now" marker, attribution label. Deterministic order (score, findings count, domain), paged. | UC1 | Must |
-| FR2a | Filters, minimal set: score / tier, signal type, has "why now" evidence, security gear present / absent. | UC1, UC3 | Must |
+| FR1 | Ranked account list: domain, research-priority score, tier, top 2-3 reasons in plain English, "why now" marker, attribution label, prospect-eligibility label. Deterministic order (score, findings count, domain), paged. | UC1 | Must |
+| FR2a | Filters, minimal set: score / tier, signal type, has "why now" evidence, security gear present / absent, prospect eligibility (default hides likely non-prospects; `signals-scoring.md` 1b). | UC1, UC3 | Must |
 | FR2b | Further filter: attribution label. (Country filter cut, D29.) | UC1 | Nice |
 | FR2c | Partial industry filter (TLD + title keywords; LLM option decided in step 3). | UC1 | Nice, depends on step 3 |
-| FR3 | Account detail: each finding in plain English with evidence (host / IP, port, module, product + version, CVE ID + CVSS + KEV / EPSS, worded "potential match to a known-exploited CVE, observed on <date>"; cert expiry; observed-at). Score breakdown that sums to the total. Attribution per finding (direct + source, or via-IP). Display name only if it passes the name filter. | UC2 | Must |
+| FR3 | Account detail: each finding in plain English with evidence (host / IP, port, module, product + version, CVE ID + CVSS + KEV / EPSS, worded "potential match to a known-exploited CVE, observed on <date>", or **verified** when Shodan verified it; cert expiry; observed-at). Score breakdown that sums to the total. Attribution per finding (direct + source, or via-IP). Display name only if it passes the name filter. | UC2 | Must |
 | FR4 | Plays: preset finding-based views, each naming its buyer role (`use-cases.md` UC3): exposed remote access / DB, EOL software, potential known-exploited CVEs, expired / expiring certs, edge appliances. Built on FR2a. | UC3 | Must |
 | FR5 | CSV export of the current filtered list (domain, score, tier, reasons, why-now, evidence summary). | UC3 | Must |
 | FR6 | Snapshot date and source file shown on every view. | all | Must |
 
 ## Functional: offline pipeline
+
 | ID | Requirement | Priority |
 |---|---|---|
 | FR7 | Stream one banner file into a per-domain findings table, applying the infrastructure-class policy of `signals-scoring.md` section 1: drop honeypot and noise; drop shared CDN / WAF edge records unless they name the domain (then only the "behind <edge>" fact); cloud / hosting IPs get no via-IP attribution; customer appliances kept as facts. Tag each finding direct or via-IP; via-IP only for IPs with exactly one domain and a non-CDN, non-cloud/hosting org; IPs with 2+ domains are unresolved. Count findings per domain + product / version, not per record. | Must |
 | FR8 | Deterministic scoring from a versioned config; every score can be rebuilt from its stored evidence. | Must |
 | FR9 | Record a funnel for every run: records -> kept -> linked to a domain -> accounts, with counts per drop reason. Feeds the write-up. | Must |
-| FR10 | Evaluation: C1 forward-DNS link check, C2 blind human labels with precision@15 vs baselines (weights frozen first), C4 sensitivity (`signals-scoring.md` section 4). | Must |
-| FR11 | Coverage-aware merge of a new file into existing accounts. Each finding carries `first_seen` / `last_seen`, and on each new file is one of: **new**, **still present**, **resolved** (a comparable re-probe: same IP:port, same module, and the probe returned a banner, yet the finding is absent), **not observed** (anything else, including no probe, a different module, or an empty / failed probe). Missing is never read as fixed. Coverage is the set of scanned IP:port for IPs linked to accounts. | Design |
+| FR10 | Evaluation: C1 forward-DNS match rate, C2 blind human labels with precision@20 vs highest-CVSS and random (weights frozen first), C4 sensitivity (`signals-scoring.md` section 4). | Must |
+| FR11 | Coverage-aware merge of each new file into existing accounts, with `first_seen` / `last_seen` per finding. Invariants: `architecture.md`, "FR11 merge invariants". | Design |
 
 ## Non-functional
 **NFR1. Volume: hundreds to thousands of files per month.**

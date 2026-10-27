@@ -228,6 +228,7 @@ One entry per decision: decision, options considered, why, date.
   removes contradictions between docs.
 
 ## D25. Scoring revision (2026-10-27, external review)
+- **Status**: extended by D35, D36, D38 (2026-10-27, second external review).
 - **Decision**: Exposed remote access / DB / ICS detected by Shodan module (not port) scores 45
   and reaches Tier 1 alone. Per product + version: at most one CVE award (potential KEV 25, or
   EPSS >= 0.1 and CVSS >= 7 15) plus EOL 15, capped at 30 per product; software total capped at
@@ -258,6 +259,7 @@ One entry per decision: decision, options considered, why, date.
   score's meaning and the plays' audience explicit.
 
 ## D28. Evaluation revision (2026-10-27, external review)
+- **Status**: pool and k superseded by D37; C1 metric renamed by D39 (2026-10-27, second external review).
 - **Decision**: Freeze weights before labelling. Up to 60 human labels: union of the top 15 from
   our ranking, top 15 by max CVSS, top 15 by CVE count, plus 15 random; shown blind, "unknown"
   allowed. Report precision@15 per ranking. Keep C1 (forward DNS) and C4 (±25% at k=15,
@@ -283,6 +285,7 @@ One entry per decision: decision, options considered, why, date.
 - **Why**: Re-scoring without reprocessing (D10) only works if every rule's inputs are retained.
 
 ## D31. Comparable re-probe for "resolved" (2026-10-27, external review)
+- **Status**: the single statement of FR11 rules now lives in `architecture.md` (D40) (2026-10-27, second external review).
 - **Decision**: FR11 (design only): a finding is "resolved" only if the new file re-probed the same
   IP:port with the same module and got a banner; otherwise "not observed".
 - **Options**: D11's "same IP:port scanned".
@@ -304,3 +307,61 @@ One entry per decision: decision, options considered, why, date.
 - **Options**: D22's order (full run and real deploy on Thursday).
 - **Why**: Both are the largest schedule risks; finding problems on Wednesday leaves time to fix
   them.
+
+## D34. Prospect eligibility label (2026-10-27, second external review)
+- **Decision**: A rule-based label per account: likely org / uncertain / likely non-prospect
+  (hoster, ISP, dynamic DNS, personal, parked). Shown in the list and used as a filter (default
+  hides likely non-prospects); never part of the research-priority score. Rules:
+  `signals-scoring.md` 1b.
+- **Options**: fold eligibility into the score; rely on the blocklist alone.
+- **Why**: "Is this a company we can sell to" and "how much does it need help" are different
+  questions. Mixing them hides why an account ranks. The blocklist cannot catch every ISP, dynamic
+  DNS or parked domain that survives attribution.
+
+## D35. Verified CVE label (2026-10-27, second external review)
+- **Decision**: A CVE in `opts.vulns` or with `verified: true` is labelled "verified" instead of
+  "potential". Points unchanged.
+- **Options**: extra points for verified CVEs; ignore the flag.
+- **Why**: The wording must be true. Verified hits are rare (44 of 126,814 in the line sample), so
+  extra points would add a rule for almost no accounts.
+
+## D36. Docker API exposure and EOL OS (2026-10-27, second external review)
+- **Decision**: Exposed Docker API (port 2375) counts as an exposure (45) only when the Shodan
+  module confirms it. `eol-os` scores 5 once per account, inside the software cap.
+- **Options**: port-only Docker detection; `eol-os` at the EOL-product weight.
+- **Why**: An unauthenticated Docker API is remote code execution, but the port alone is not
+  evidence. `eol-os` is rare (0.04%) and usually inferred from banners, so it gets a low weight.
+
+## D37. Evaluation pool at k=20 (2026-10-27, second external review)
+- **Decision**: Precision@20. Pool = our top 20 + top 20 by highest CVSS + 20 random,
+  deduplicated, at most 60 blind human labels, all from the same eligible account set. C4 at k=20.
+  The most-CVEs baseline is dropped.
+- **Options**: D28 (top 15 of three rankings + 15 random).
+- **Why**: The same label budget gives a larger k for the two comparisons that matter: does our
+  ranking beat "highest CVSS first", and does either beat random.
+
+## D38. Mutually exclusive certificate states (2026-10-27, second external review)
+- **Decision**: Each certificate is exactly one of expired (neglect, 5) / expires within 30 days
+  of the scan (why-now marker) / ok.
+- **Options**: independent flags (a cert could be both "expired" and "expiring").
+- **Why**: One cert must not count twice or show contradictory evidence.
+
+## D39. C1 reports a forward-DNS match rate (2026-10-27, second external review)
+- **Decision**: C1's metric is "forward DNS match rate" per attribution label and source, not
+  "confirmed ownership".
+- **Options**: call a DNS match a confirmed link.
+- **Why**: A match does not prove ownership (shared hosting), and a miss does not disprove it
+  (re-assigned cloud IPs). The name must say what was measured.
+
+## D40. One statement of the FR11 merge invariants (2026-10-27, second external review)
+- **Decision**: FR11 rules live in one paragraph in `architecture.md` ("FR11 merge invariants");
+  FR11 in `requirements.md` points there.
+- **Options**: restate them in requirements, architecture and decisions.
+- **Why**: Repeated copies drifted once already (D11 vs D31).
+
+## D41. DATA_NOTES section 6 superseded (2026-10-27, second external review)
+- **Decision**: DATA_NOTES section 6 ("Recommended pipeline implications") is marked superseded
+  by this file.
+- **Options**: edit it item by item.
+- **Why**: It predates the design. DATA_NOTES stays the record of measured facts; decisions live
+  here.

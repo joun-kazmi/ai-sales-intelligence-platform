@@ -1,7 +1,7 @@
 # Users and use cases
 
 Status: agreed 2026-10-27, amended after step 3 and after external review. Decisions D1-D8
-(D2 amended), D27-D29 in `docs/DECISIONS.md`.
+(D2 amended), D27-D29, D34-D35 in `docs/DECISIONS.md`.
 Legend as in `DATA_NOTES.md`: **[M]** measured, **[H]** hypothesis / not yet validated.
 
 ## How B2B sales teams prospect (the model we design for)
@@ -31,6 +31,7 @@ neglect). The score is therefore a **research priority** for that product, not a
 probability. For other product lines (email security, endpoint, identity) this data says little.
 
 ## What the data can and cannot say about an account
+
 | Can | Cannot |
 |---|---|
 | Externally visible security posture of a domain: potential CVEs, EOL software, exposed remote access / databases, TLS and certificate neglect [M, DATA_NOTES 5] | Company legal name: cert `O` on 1.5% of records, top values are vendors [M] |
@@ -43,15 +44,19 @@ probability. For other product lines (email security, endpoint, identity) this d
 ### UC1. Work my ranked list
 "Show me the accounts most likely to need help, best first, so I can pick this week's Tier 1."
 - Each row: domain (the account), research-priority score and tier, top 2-3 reasons in plain
-  English, a "why now" marker when timing evidence exists, and the attribution label.
+  English, a "why now" marker when timing evidence exists, the attribution label, and a
+  prospect-eligibility label (likely org / uncertain / likely non-prospect: hoster, ISP, dynamic
+  DNS, personal, parked), kept separate from the score (D34).
 - Filters: minimum score / tier, signal type, "has why-now evidence", security gear present /
-  absent; attribution label and partial industry label if time allows. No country filter (D29).
+  absent, prospect eligibility (likely non-prospects hidden by default); attribution label and
+  partial industry label if time allows. No country filter (D29).
 
 ### UC2. Understand why an account ranks where it does
 "Before I reach out, show me the evidence, so my opener is specific and true."
 - Every finding in plain English plus its raw evidence: host / IP, port, Shodan module, product
   and version, CVE ID with CVSS and the record's KEV flag, cert expiry date, observed-at timestamp.
-  CVE wording: "potential match to a known-exploited CVE (CVE-…), observed on <date>".
+  CVE wording: "potential match to a known-exploited CVE (CVE-…), observed on <date>";
+  "verified" instead of "potential" when Shodan verified the CVE (D35).
 - CVEs are labelled **"potential"**: they come from banner-version matching, not verification
   (verified `opts.vulns` is 0.03% of records [M]).
 - A score breakdown that adds up to the total, and how each finding was tied to the domain:
@@ -82,6 +87,7 @@ has one file, so it cannot show this, and we will not fake a second snapshot.
 ## "Why now" inside one snapshot (MVP)
 Timing evidence used in UC1-UC3. Sample figures are the 1-in-160 sample, record level, before
 CDN/infra exclusion, so they only show that a field exists and roughly how common it is.
+
 | Evidence | What is in the file | Notes |
 |---|---|---|
 | Cert expiring within 30 days | `ssl.cert.expires` vs record `timestamp` | 273 of 6,262 certs in sample (4.4%); already expired 332 (5.3%) [M]. Measured against scan time, not today. **Marker only, 0 points** (D25). |

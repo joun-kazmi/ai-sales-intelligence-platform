@@ -13,6 +13,7 @@ Artifacts: `data/sample/profile.json` (full-pass aggregates), `data/sample/sampl
 - Contents are untrusted (banners, HTML, titles). Never execute or render them.
 
 ## 2. Schema and fill rates [M] (% of 14.6M records)
+
 | Field | Fill | Notes |
 |---|---|---|
 | `ip`/`ip_str` | 97.9 | IPv6 records have `ipv6` instead (2.1%) |
@@ -52,6 +53,7 @@ Top products: nginx 5.2, Apache httpd 1.9, CloudFront 1.5, AkamaiGHost 1.1, Open
 Measured on the 91,303-record sample (heuristic regex classification of `org`; error margin a few points).
 
 **4a. `org`/`isp` is rarely the customer.**
+
 | org class | share of records |
 |---|---|
 | cloud / hosting / CDN (Imperva, Google, Cloudflare, Amazon, Alibaba, Akamai, Hetzner ...) | **76.2%** |
@@ -74,6 +76,7 @@ So at most roughly **5-13% of records** have an `org` that could plausibly be th
 
 ## 5. Candidate "needs cybersecurity help" signals
 Prevalence: "% records" = full pass [M]; "% vanity domains" = sample, domain-level OR across that domain's records, n=8,884 [M]; "no-CDN" = vanity domains without WAF/CDN tag (n=4,849). Domain-level percentages are biased by few records per domain (1.7 avg), so true per-domain prevalence is probably higher.
+
 | # | Signal | % records | % vanity domains | % no-CDN domains | Strength [H] |
 |---|---|---|---|---|---|
 | 1 | Banner-matched CVE with CVSS>=7 (`vulns`) | 2.96 | 7.6 | **13.3** | high, but must drop CDN/shared infra duplicates |
@@ -108,9 +111,9 @@ Exposed-service counts (full pass, records): 21/FTP 40.5k, 3389/RDP 48.8k (0.33%
 
 **Firmographic/size proxies [H]** to combine with risk: number of distinct IPs/domains per company, cert `O` present, cloud provider mix, presence of enterprise gear (Fortinet, SonicWall, Citrix, Exchange, Proofpoint), hostnames count per domain, TLD/country.
 
-## 6. Recommended pipeline implications
+## 6. Recommended pipeline implications (superseded by `docs/DECISIONS.md`)
 1. Pre-filter: drop `tags` in (`honeypot`), modules in noise list, and records whose org class is CDN/ISP *and* whose only names are PTR names.
 2. Build a company table keyed by registrable domain (use a public-suffix list), attach all IPs/ports/signals, dedupe CVEs per product, not per record.
-3. Score with a transparent rule model (CVSS>=7 + EOL + exposed admin/DB + hygiene gaps), discounted by WAF/CDN presence; add firmographic proxies. *(Superseded: no WAF/CDN discount, see `docs/design/signals-scoring.md`.)*
+3. Score with a transparent rule model (CVSS>=7 + EOL + exposed admin/DB + hygiene gaps), discounted by WAF/CDN presence; add firmographic proxies.
 4. Use `sample.jsonl.zst` (91k records) for development; full file only for the final batch.
 5. Accept that only ~9% of records link to a candidate domain; the output list will be domains, with company names via external enrichment.

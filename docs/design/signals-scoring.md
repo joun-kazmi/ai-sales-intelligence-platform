@@ -1,6 +1,6 @@
 # Signals, scoring and measurement
 
-Status: agreed 2026-10-27, revised the same day after external review (D23-D33 in
+Status: agreed 2026-10-27, revised after two external reviews (D23-D41 in
 `docs/DECISIONS.md`). **[M]** measured, **[H]** hypothesis. Data facts: `DATA_NOTES.md` 4, 5, 5b.
 
 The score is a **research priority**: how strongly the externally observed evidence says this
@@ -16,6 +16,7 @@ infrastructure domains are dropped (seeded suffix list + "PTR embeds the IP's oc
 owner, often the hoster, and produced most ISP false positives (DATA_NOTES 4b).
 
 **Infrastructure classes (one policy, also used by FR7 and `architecture.md`):**
+
 | Class | Detected by | Policy |
 |---|---|---|
 | Shared CDN / WAF edge | `cdn` tag or org in the CDN list (Imperva / Incapsula, Cloudflare, Akamai, Fastly, CloudFront, ...) | **Dropped** unless the record itself names a non-infra domain. A kept record only adds the fact "behind <edge>" to that account; it never produces findings (its banner and CVEs describe the edge). |
@@ -38,14 +39,27 @@ direct via `http.host` or PTR; Low = via-IP. C1 (section 4) measures each label.
 record of any IP on which a kept domain appears directly (so attribution runs on real IP context).
 Drop `http.html` and raw `data`.
 
+## 1b. Prospect eligibility (a filter, not part of the score; D34)
+Each account gets one rule-based label, shown in the list and used as a filter. The default view
+hides **likely non-prospect**. It never changes the research-priority score.
+
+| Label | Rules (first match wins) |
+|---|---|
+| Likely non-prospect | Hoster or ISP domain that survived the blocklist (its PTR names embed IPs, or it names hosts across many unrelated orgs); dynamic DNS suffix (e.g. `duckdns.org`, `no-ip.*`, `ddns.net`, `dyndns.*`, `synology.me`, `myfritz.net`); personal / consumer (residential ISP PTR, consumer NAS or router as the only service); parked (title or server of a parking page, "domain for sale") |
+| Likely org | Institutional TLD (`.edu`, `.gov`, `.mil`, `.ac.*`, `.bank`); cert `O` that is not a vendor default; branded title that passes the name filter; linked through the scan hostname |
+| Uncertain | Everything else |
+
 ## 2. Signals and points
 Points count once per finding type per account unless stated. Evidence wording for CVEs:
-"potential match to a known-exploited CVE (CVE-…) in nginx 1.18.0, observed on 2026-10-26".
+"potential match to a known-exploited CVE (CVE-…) in nginx 1.18.0, observed on 2026-10-26". A CVE
+that Shodan verified (listed in `opts.vulns`, or `verified: true`; 44 of 126,814 hits in the line
+sample [M]) is labelled **verified** instead of "potential" (D35). Points are the same.
 
 | Family | Finding | Points |
 |---|---|---|
-| Exposure | Exposed remote access / database / ICS service, detected by **Shodan module**, never port alone. Modules seen in the sample [M]: `rdp`, `rdpeudp`, `smb`, `telnet`, `mysql`, `ms-sql`, `postgresql`, `mongodb`, `redis`, `memcache`, `couchdb`, `oracle-tns`, `modbus`, `s7`, `dnp3`, `ethernetip`, `bacnet`, `fox`. VNC / Elasticsearch module names to confirm on the full run. | 45 (reaches Tier 1 alone) |
+| Exposure | Exposed remote access / database / ICS service, detected by **Shodan module**, never port alone. Modules seen in the sample [M]: `rdp`, `rdpeudp`, `smb`, `telnet`, `mysql`, `ms-sql`, `postgresql`, `mongodb`, `redis`, `memcache`, `couchdb`, `oracle-tns`, `modbus`, `s7`, `dnp3`, `ethernetip`, `bacnet`, `fox`. Also the **Docker API (port 2375), only when the module confirms it**. VNC / Elasticsearch / Docker module names to confirm on the full run. | 45 (reaches Tier 1 alone) |
 | Software, **per product + version** | At most one CVE award: potential known-exploited CVE (`kev` true) **25**, OR potential CVE with EPSS >= 0.1 and CVSS >= 7 **15**. Plus end-of-life (`eol-product`) **15**. Capped at **30 per product**. | 0-30 per product |
+| Software, OS | End-of-life operating system (`eol-os` tag; 0.04% of records [M]) | 5, once per account, inside the account cap |
 | Software, account cap | Sum over products capped at **40** (potential, unverified matches never outweigh more than one observed exposure plus a little) | <= 40 |
 | Neglect (cap 10) | Expired cert 5; deprecated TLS 3; self-signed cert on a public name 3; server version disclosed 2; HTTPS without HSTS 2 | <= 10 |
 | Facts, 0 points | Customer appliance; login / admin / DevOps panel; behind CDN / WAF | filters and plays only |
@@ -58,6 +72,9 @@ Rules:
   CVE-bearing accounts: if only CVE-2023-44487 stands out, the list stays as is; otherwise extend
   it with the measured outliers and record them in DATA_NOTES. (Replaces the 10% rule, D26.)
 - **CVE-2026-\* IDs** award 0 until the owner's spot-check (D2).
+- **Certificate state** is exactly one of: **expired** (neglect, 5) / **expires within 30 days of
+  the scan** (why-now marker, 0) / **ok**. Per certificate; an account shows the expired finding if
+  any cert is expired and the marker if any cert is in the 30-day window (D38).
 - **Tiers:** Tier 1 >= 45, Tier 2 25-44, Tier 3 1-24; 0 = not ranked (reachable through plays).
   Fixed thresholds, so tiers mean the same in every monthly file.
 - **Deterministic order:** score desc, then number of distinct findings desc, then domain asc. The
@@ -66,6 +83,7 @@ Rules:
 - Weights live in a versioned config (FR8). They are **frozen before labelling** (section 4).
 
 **Worked example (hypothetical accounts; shows the tier order is sensible):**
+
 | Account | Evidence | Points | Score | Tier |
 |---|---|---|---|---|
 | A | nginx 1.18.0 with a potential known-exploited CVE (25) and EOL (15) -> 30; OpenSSH 7.4 with a likely-exploitable potential CVE (15); software cap 40; expired cert (5), deprecated TLS (3) | 40 + 8 | 48 | 1 |
@@ -81,26 +99,29 @@ existing security spend), not evidence of need, so it lives in a play.
 
 ## 3. Feature schema: scoring rules to retained fields
 The feature layer keeps these fields per filtered record (no `http.html`, no raw `data`).
+
 | Rule | Retained fields |
 |---|---|
 | Attribution (section 1) | `ip_str` / `ipv6`, `_shodan.options.hostname`, `ssl.cert.subject.CN`, `http.host`, `hostnames[]`, `domains[]`, `org`, `isp`, `asn`, `cloud.provider`, `tags` |
-| Exposed service | `_shodan.module`, `port`, `transport`, `tags` (`honeypot` excluded upstream) |
+| Exposed service | `_shodan.module`, `port`, `transport`, `tags` (`honeypot` excluded upstream), `docker` sub-object if present |
 | Software awards | `product`, `version`, `cpe23`, `vulns{CVE: cvss, cvss_version, epss, kev, ransomware_campaign, verified}`, `opts.vulns` (verified list) |
 | End-of-life | `tags` (`eol-product`, `eol-os`), `product`, `version` |
 | Neglect | `ssl.cert.expired`, `ssl.cert.expires`, `ssl.cert.issued`, `ssl.cert.subject` / `issuer` (self-signed), `tags` (`self-signed`), `ssl.versions`, `http.headers` (HSTS flag only), `http.server` (version disclosure) |
 | Why-now markers | `vulns.*.kev`, `ssl.cert.expires`, `timestamp` |
+| Prospect eligibility | name candidates and sources, `hostnames[]`, `org`, `isp`, `http.title` (filtered, truncated), `http.server`, `ssl.cert.subject.O`, `tags` |
 | Facts (appliance, panel, CDN / WAF) | `product`, `http.title` (filtered, truncated), `http.server`, `ssl.cert.subject.O`, `http.waf`, `tags` (`cdn`) |
 | Provenance and coverage | `timestamp`, `_shodan.id`, `_shodan.crawler`, `_shodan.module`, `hash`, input file hash |
 
 ## 4. Measuring whether it works (FR10)
+
 | # | Question | Method | Manual work |
 |---|---|---|---|
-| C1 | Is the account link right? | **Forward DNS, automated.** If the domain or hostname resolves to the record's IP, the link is confirmed. Report the confirmed share per attribution label and source. Hand-check ~30 ambiguous cases. Audit only, run on the owner's machine. | ~30 checks |
-| C2 | Does the ranking beat simpler sorts? (headline) | **Weights frozen first** (config version recorded). Pool = union of the top 15 of our ranking, top 15 by max CVSS, top 15 by CVE count, plus 15 random accounts (<= 60). Shown **blind** (shuffled; evidence only, no score, rank or source). Label: worth a call / not / unknown. Report **precision@15** per ranking (unknowns excluded and counted). | Owner labels <= 60 |
-| C4 | Is the ranking fragile? | Perturb each weight ±25%; report top-15 overlap and rank correlation, with the deterministic tie-break. | none |
+| C1 | How often do links agree with DNS? | **Forward DNS match rate, automated**: share of links where the domain or hostname resolves to the record's IP today, per attribution label and source. A match supports a link but does not prove ownership (shared hosting); a miss does not disprove it (re-assigned cloud IPs). Hand-check ~30 misses. Audit only, run on the owner's machine (D39). | ~30 checks |
+| C2 | Does the ranking beat a simpler sort? (headline) | **Weights frozen first** (config version recorded). Pool = our top 20 + top 20 by highest CVSS + 20 random accounts, deduplicated (<= 60), all drawn from the same eligible set (default eligibility filter), so the comparison isolates the scoring. Shown **blind** (shuffled; evidence only, no score, rank or source). Label: worth a call / not / unknown. Report **precision@20** for ours, highest-CVSS and random (unknowns excluded and counted) (D37). | Owner labels <= 60 |
+| C4 | Is the ranking fragile? | Perturb each weight ±25%; report top-20 overlap and rank correlation, with the deterministic tie-break. | none |
 | C5 | Does this month's score predict next month's new exposures? | Needs FR11 and two files. | Design only |
 
-Cut: C3 (KEV lift) and the LLM labeller (D28).
+Cut: C3 (KEV lift), the LLM labeller (D28) and the most-CVEs baseline (D37).
 
 ## 5. LLM use
 **None in the MVP pipeline or evaluation** (D28). The account classifier (display name, industry,

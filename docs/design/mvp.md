@@ -1,7 +1,7 @@
 # MVP scope and plan
 
 Status: agreed 2026-10-27, revised the same day after external review. Due **Fri 2026-10-30**.
-Decisions D21-D22, D33 in `docs/DECISIONS.md`.
+Decisions D21-D22, D33, D37 in `docs/DECISIONS.md`.
 
 ## In scope
 - Pipeline: extract, attribution, findings + score, funnel, manifest, eval C1 / C2 / C4
@@ -13,6 +13,7 @@ Decisions D21-D22, D33 in `docs/DECISIONS.md`.
   used in the development workflow.
 
 ## Cuts
+
 | Cut | Reason |
 |---|---|
 | FR11 / UC4 coverage-aware merge, C5 | One file; designed in `architecture.md` |
@@ -29,6 +30,7 @@ Decisions D21-D22, D33 in `docs/DECISIONS.md`.
 finding, the human eval (C2), the hosted list, the write-up.
 
 ## Plan
+
 | When | Engineering | Owner |
 |---|---|---|
 | Tue 10-27 | Bare app (basic auth, noindex), Dockerfile, `render.yaml` (done) | Connect Render, set env vars |
@@ -38,7 +40,7 @@ finding, the human eval (C2), the hosted list, the write-up.
 | Thu 10-29 AM | Tune on the sample, then **freeze weights**. Eval: C1 DNS script, blind label pool export, C4 | Run DNS script; label <= 60 accounts (< 1 h) |
 | Thu PM | App: list, detail, plays, CSV | |
 | Thu eve | | Score the full feature layer (no re-extraction); upload the full artifact (hard cap enforced) |
-| Fri 10-30 AM | Eval results (precision@15, C1, C4); fix-only changes, no weight changes | |
+| Fri 10-30 AM | Eval results (precision@20, C1 forward-DNS match rate, C4); fix-only changes, no weight changes | |
 | Fri PM | README write-up | Final check; submit with the credentials note |
 
 **Throughput claims:** only measured figures are quoted. The profiling pass took 754 s for 14.6M
