@@ -499,3 +499,11 @@ One entry per decision: decision, options considered, why, date.
   question in 34 s. Result [M]: top-20 overlap >= 0.85 and Spearman >= 0.9993 in every run
   (DATA_NOTES 5c). Caveat: the 2-point weights round back to 2 at +/-25%, so those runs are
   no-ops.
+
+## D54. C4 moves small weights by one point (2026-10-28)
+- **Decision**: In C4, a weight that rounds back to itself at +/-25% (the 2-point `version_disclosed`
+  and `no_hsts`) is moved by +/-1 point instead; each run records which rule applied.
+- **Options**: report the no-op runs as they were; use fractional points.
+- **Why**: A perturbation that changes nothing tests nothing. Points are integers in the config, so
+  one point is the smallest real change. Result: top-20 overlap >= 0.95 and Spearman >= 0.9971 for
+  those runs (DATA_NOTES 5c).

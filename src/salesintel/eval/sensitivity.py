@@ -1,5 +1,7 @@
 """C4: is the ranking fragile? Perturb each point weight by +/-25% and compare (D28, D37).
 
+Weights that round back to themselves at +/-25% move by +/-1 point instead (D54).
+
 Reports, per perturbation, the overlap of the default-view top 20 (and top 100) with the frozen
 ranking, and the Spearman correlation of scores over all default-view accounts. Attribution and
 eligibility run once; only points change. Tie-break as in scoring (score, findings, domain).
@@ -75,10 +77,17 @@ def run(features: Path, out: Path, sample_modulus: int | None = None, delta: flo
     for w in WEIGHTS:
         for sign in (-1, 1):
             raw = json.loads(json.dumps(base.raw))
-            raw["points"][w] = round(raw["points"][w] * (1 + sign * delta))
+            old = raw["points"][w]
+            new = round(old * (1 + sign * delta))
+            change = f"{sign * delta:+.0%}"
+            if new == old:
+                # Small weights (2 points) round back to themselves at +/-25%: move them by one
+                # point instead so the run tests something.
+                new, change = old + sign, f"{sign:+d} pt"
+            raw["points"][w] = new
             got = _ranking(groups, replace(base, raw=raw))
             rows.append({
-                "weight": w, "change": f"{sign * delta:+.0%}", "value": raw["points"][w],
+                "weight": w, "change": change, "value": new,
                 "top20_overlap": len(set(top[20]) & {d for d, _ in got[:20]}) / 20,
                 "top100_overlap": len(set(top[100]) & {d for d, _ in got[:100]}) / 100,
                 "spearman_all": round(_spearman(ref_scores, dict(got)), 4),

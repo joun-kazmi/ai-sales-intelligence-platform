@@ -205,7 +205,28 @@ T3 168,410 / 162,093, not ranked 171,884 / 167,265. The x20 estimates from the s
 each of 10 point weights at +/-25%. Top-20 overlap with the frozen ranking >= 0.85 in all 20 runs
 (lowest: `cve_kev` +25% and `cve_likely` -25%, 0.85); top-100 overlap >= 0.72 (lowest:
 `exposed_service` -25%); Spearman over all accounts >= 0.9993. `version_disclosed` and `no_hsts`
-(2 points) round back to 2, so their runs are no-ops. The ranking is not knife-edge.
+(2 points) round back to 2 at +/-25%, so those four runs were re-run at +/-1 point (D54): top-20
+overlap 0.95-1.00, top-100 0.90-1.00, Spearman 0.9971-0.9979 (lowest overall: `no_hsts` +1 pt).
+Across all 20 runs: top-20 overlap >= 0.85, Spearman >= 0.9971. The ranking is not knife-edge.
+
+**C1 forward-DNS match rate [M]** (full file, owner's machine, `dd5294e`, 300 links per source,
+seed 20261028; a match supports a link, it does not prove ownership, D39):
+
+| Source | Label | Match rate | Of resolved |
+|---|---|---|---|
+| `http_host` | Medium | 0.937 | |
+| `scan_hostname` | High | 0.807 | |
+| `ptr` | Medium | 0.587 | 0.657 |
+| `cert_cn` | High | 0.417 | 0.439 |
+| via-IP | Low | 0.173 | 0.221 |
+
+By label: High 0.612, Medium 0.762, Low 0.173. **Open question:** `cert_cn` is labelled High but
+matches less often than both Medium sources. Hypothesis [H]: the certificate names the bare
+domain (or a service name) while the web host lives elsewhere, e.g. a cert for `acme.com` on a
+mail or VPN server whose IP is not what `acme.com` resolves to. Attribution labels stay unchanged
+until the owner's hand-check of the 30 misses (`misses.csv`) is in. Via-IP is the weakest link,
+as its Low label says. C2 pool built from `data-v1`: 60 accounts (20 / 20 / 20), overlap ours vs
+highest-CVSS 0, 425 s, peak RSS 0.97 GB.
 
 ## 6. Recommended pipeline implications (superseded by `docs/DECISIONS.md`)
 1. Pre-filter: drop `tags` in (`honeypot`), modules in noise list, and records whose org class is CDN/ISP *and* whose only names are PTR names.

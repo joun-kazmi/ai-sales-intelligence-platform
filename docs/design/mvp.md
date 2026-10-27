@@ -52,7 +52,10 @@ slot; labelling can start once the label pool is exported.
 **UI spec:** `docs/design/ui.md` (Thursday build).
 
 **Write-up must state:** prospect eligibility leaves 72% of accounts "uncertain"; the label hides
-the obvious non-prospects and does not classify the rest.
+the obvious non-prospects and does not classify the rest. Known MVP shortcut: the end-of-life play
+matches "end-of-life" in the finding sentence, because the artifact has no separate EOL flag
+(`ui.md`). C1: certificate-name links (labelled High) matched DNS less often than Medium sources
+(open question, DATA_NOTES 5c).
 
 **Hosted artifact hard cap: 100 MB** (NFR3). Publishing fails above it; the fallback is Tier 1-2
 accounts with full evidence plus counts for the rest.
