@@ -330,6 +330,8 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--price-out", type=float, help="USD per million output tokens")
     a.add_argument("--max-tokens", type=int, default=4000,
                    help="openai: max output tokens per call (reasoning models need room before the JSON)")
+    a.add_argument("--no-thinking", action="store_true",
+                   help="openai: send chat_template_kwargs enable_thinking=false (e.g. NVIDIA Nemotron)")
     a.add_argument("--force", action="store_true", help="overwrite ai_labels.csv")
     args = ap.parse_args(argv)
     if args.cmd == "build":
@@ -342,7 +344,8 @@ def main(argv: list[str] | None = None) -> None:
         if (args.price_in is None) != (args.price_out is None):
             raise SystemExit("--price-in and --price-out go together")
         res = ailabel.run(args.out, model=args.model, force=args.force, provider=args.provider,
-                          price_in=args.price_in, price_out=args.price_out, max_tokens=args.max_tokens)
+                          price_in=args.price_in, price_out=args.price_out, max_tokens=args.max_tokens,
+                          no_thinking=args.no_thinking)
     print(json.dumps(res, indent=2))
 
 

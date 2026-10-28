@@ -274,6 +274,21 @@ result. Fix (D61): `--max-tokens` (default 4000), invalid rows keep the finish r
 (`invalid:length`), and the last `{...}` object is extracted from text around the JSON. Rerun with
 `--force` to follow.
 
+**AI rater thinking switch [M]** (owner's machine, 2026-10-29; one c2v2 row, NVIDIA endpoint,
+`json_schema`, `max_tokens` 4000):
+
+| Model | Thinking control | Time | Output tokens | Result |
+|---|---|---|---|---|
+| `nemotron-3-ultra-550b-a55b` | `chat_template_kwargs` `enable_thinking: false` | 9.7 s | 290 | valid |
+| `nemotron-3-ultra-550b-a55b` | `/no_think` in system prompt | 17.5 s | 810 | valid |
+| `nemotron-3.5-lightning-30b-a3b` | `enable_thinking: false` | 1.8 s | 159 | valid |
+| `nemotron-3.5-lightning-30b-a3b` | `/no_think` in system prompt | not recorded | 4000 | invalid:length |
+| `openai/gpt-oss-20b` | `reasoning_effort` low | 90.6 s | 3898 | valid |
+
+One row per setting, so these are indicative, not rates. `enable_thinking: false` is the only
+control that kept both Nemotron models short and valid; `/no_think` does not reliably switch thinking
+off. Rater setting for the c2v2 run: `nemotron-3-ultra-550b-a55b` with `--no-thinking` (D62).
+
 **False exposures [M]** (sample artifact, config `765eef67e0c5`, found while checking the UI): the
 Shodan module names the probe that ran, not always the service that answered. Of 382
 exposed-service findings, ~13 (3.4%) carry a product of a different service: `rdp` answered by

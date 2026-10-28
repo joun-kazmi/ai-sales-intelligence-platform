@@ -600,3 +600,16 @@ One entry per decision: decision, options considered, why, date.
   cause, the finish reason shows whether it was the cause, and extracting the last object handles
   models that put reasoning in the content without guessing their tag format. No retries: a retry
   would hide a systematic failure that the invalid count should show.
+
+## D62. AI rater: thinking off for NVIDIA Nemotron (2026-10-29, amends D61)
+- **Decision**: `ai-label --no-thinking` (OpenAI-compatible path only) sends `extra_body`
+  `{"chat_template_kwargs": {"enable_thinking": false}}`, merged with OpenRouter's usage-accounting
+  key when both apply. `ai_run.json` records `thinking` as `"off"` or `"default"`. The c2v2 rater
+  run uses `nvidia/nemotron-3-ultra-550b-a55b` with `--no-thinking`; the prompt and schema are
+  unchanged, so the prompt hash is the same.
+- **Options**: `/no_think` in the system prompt; keep thinking on with a larger `--max-tokens`; a
+  non-thinking model such as `gpt-oss-20b` at low reasoning effort.
+- **Why**: Measured on one row (DATA_NOTES 5c): `enable_thinking: false` gave valid output in 9.7 s
+  / 290 tokens (ultra) and 1.8 s / 159 tokens (lightning); `/no_think` was slower on ultra and ran
+  lightning to the 4000-token cap (invalid:length); gpt-oss-20b at low effort took 90.6 s. Thinking
+  is a rater setting, so it is logged with the run.

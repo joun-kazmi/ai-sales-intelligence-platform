@@ -148,8 +148,10 @@ class OpenAICompatLabeller:
     around the JSON (a <think> block, prose) is tolerated: the last {...} object is validated.
     """
 
-    def __init__(self, client: Any, model: str, base_url: str, max_tokens: int = DEFAULT_MAX_TOKENS):
+    def __init__(self, client: Any, model: str, base_url: str, max_tokens: int = DEFAULT_MAX_TOKENS,
+                 no_thinking: bool = False):
         self.client, self.model, self.base_url, self.max_tokens = client, model, base_url, max_tokens
+        self.no_thinking = no_thinking
         self.mode = "json_schema"
         self.openrouter = "openrouter.ai" in base_url
 
@@ -164,8 +166,13 @@ class OpenAICompatLabeller:
                                      "json_schema": {"name": "label", "strict": True, "schema": label_schema()}}
         else:
             kw["response_format"] = {"type": "json_object"}
+        extra: dict[str, Any] = {}
         if self.openrouter:
-            kw["extra_body"] = {"usage": {"include": True}}  # OpenRouter usage accounting: actual cost
+            extra["usage"] = {"include": True}  # OpenRouter usage accounting: actual cost
+        if self.no_thinking:
+            extra["chat_template_kwargs"] = {"enable_thinking": False}  # e.g. NVIDIA Nemotron (D62)
+        if extra:
+            kw["extra_body"] = extra
         return self.client.chat.completions.create(**kw)
 
     def __call__(self, domain: str, evidence: str) -> tuple[dict, dict]:
@@ -234,7 +241,7 @@ def _write_labels(target: Path, rows: list[dict]) -> None:
 
 def run(out: Path, client: Any = None, model: str | None = None, force: bool = False, provider: str = "anthropic",
         base_url: str | None = None, price_in: float | None = None, price_out: float | None = None,
-        max_tokens: int = DEFAULT_MAX_TOKENS, sleep=time.sleep) -> dict:
+        max_tokens: int = DEFAULT_MAX_TOKENS, no_thinking: bool = False, sleep=time.sleep) -> dict:
     """Label every row of labels.csv; progress is saved after each row and a rerun resumes."""
     sheet, target, runfile = out / "labels.csv", out / "ai_labels.csv", out / "ai_run.json"
     previous = json.loads(runfile.read_text()) if runfile.exists() else {}
@@ -263,7 +270,7 @@ def run(out: Path, client: Any = None, model: str | None = None, force: bool = F
             import openai  # optional extra `llm`
 
             client = openai.OpenAI(base_url=base_url, api_key=key, max_retries=0)  # our retry policy only
-        labeller = OpenAICompatLabeller(client, model, base_url, max_tokens)
+        labeller = OpenAICompatLabeller(client, model, base_url, max_tokens, no_thinking)
         host = urlparse(base_url).hostname
     else:
         raise SystemExit(f"unknown provider {provider}")
@@ -302,6 +309,7 @@ def run(out: Path, client: Any = None, model: str | None = None, force: bool = F
             "refusals": totals["refusals"], "invalid": totals["invalid"],
             "temperature": 0 if provider == "openai" else None,
             "max_tokens": max_tokens if provider == "openai" else None,
+            "thinking": ("off" if no_thinking else "default") if provider == "openai" else None,
             "effort": "medium" if provider == "anthropic" else None, "server_side_fallbacks": False,
             "started_at": started, "seconds_this_run": round(time.monotonic() - t0, 1),
             "code_commit": code_commit(), "totals": totals,

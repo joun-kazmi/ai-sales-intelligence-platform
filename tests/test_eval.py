@@ -307,6 +307,28 @@ def test_openai_max_tokens_default_and_flag(tmp_path, scored, monkeypatch):
     assert seen["max_tokens"] == 4000
 
 
+def test_openai_no_thinking_merges_extra_body(tmp_path, scored, monkeypatch):
+    out = _pool(tmp_path, scored, k=1)
+    client = FakeOpenAI()
+    meta = _openai_run(out, client, no_thinking=True)  # OpenRouter base URL: usage accounting applies too
+    assert all(c["extra_body"] == {"usage": {"include": True},
+                                   "chat_template_kwargs": {"enable_thinking": False}} for c in client.calls)
+    assert meta["thinking"] == "off"
+    client = FakeOpenAI()
+    meta = _openai_run(out, client, force=True, no_thinking=True, base_url="https://integrate.api.nvidia.com/v1")
+    assert all(c["extra_body"] == {"chat_template_kwargs": {"enable_thinking": False}} for c in client.calls)
+    client = FakeOpenAI()
+    meta = _openai_run(out, client, force=True)
+    assert all(c["extra_body"] == {"usage": {"include": True}} for c in client.calls)
+    assert meta["thinking"] == "default"
+    seen = {}
+    monkeypatch.setattr(ailabel, "run", lambda out, **kw: seen.update(kw) or {})
+    labelpool.main(["ai-label", str(out), "--provider", "openai", "--model", "m", "--no-thinking"])
+    assert seen["no_thinking"] is True
+    labelpool.main(["ai-label", str(out), "--provider", "openai", "--model", "m"])
+    assert seen["no_thinking"] is False
+
+
 def test_openai_invalid_keeps_finish_reason(tmp_path, scored):
     out = _pool(tmp_path, scored, k=3)
     cut = '<think>The evidence shows RDP exposed, so'  # reasoning cut off before any JSON
