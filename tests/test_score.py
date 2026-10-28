@@ -7,7 +7,7 @@ from salesintel.pipeline import extract as extract_mod
 from salesintel.pipeline import score as sc
 
 CFG = sc.load_config()
-FROZEN = "765eef67e0c5"
+FROZEN = "6bacfc84480b"  # D55 (was 765eef67e0c5, D50)
 TS = "2026-10-26T10:00:00.000000"
 
 
@@ -190,3 +190,58 @@ def test_score_end_to_end_artifact(tmp_path):
     keys = dict(con.execute("SELECT key, value FROM manifest").fetchall())
     assert keys["input_sha256"] == m["input_sha256"] and keys["scoring_config_version"] == CFG.version
     assert man["output_bytes"] == art.stat().st_size
+
+
+# ---------- D55: exposures answered by another service do not count
+
+@pytest.mark.parametrize("module,product,counts", [
+    ("rdp", "Remote Desktop Protocol", True),
+    ("rdp", None, True),
+    ("rdp", "OpenSSH", False),
+    ("rdp", "Microsoft Windows RPC over HTTP", False),
+    ("telnet", "Cisco router telnetd", True),
+    ("telnet", "OpenSSH", False),
+    ("mysql", "MariaDB", True),
+    ("mysql", "nginx", False),
+    ("dnp3", "Ncat http proxy", False),
+])
+def test_exposure_guard(module, product, counts):
+    got, fs = total([row(module=module, port=1, product=product)])
+    assert any(f.kind == "exposed_service" for f in fs) is counts
+    assert got == (45 if counts else 0)
+
+
+def test_genuine_exposure_still_scores_when_another_is_false():
+    got, fs = total([row(module="rdp", port=3389, ip="203.0.113.1", product="OpenSSH"),
+                     row(module="mysql", port=3306, ip="203.0.113.9", product="MySQL")])
+    exp = [f for f in fs if f.kind == "exposed_service"]
+    assert got == 45 and len(exp) == 1 and exp[0].module == "mysql"
+
+
+def test_count_false_exposures_script(tmp_path):
+    import importlib.util
+    from pathlib import Path
+    import json as _json
+
+    from salesintel.pipeline.score import write_artifact
+
+    findings = [{"domain": d, "kind": "exposed_service", "family": "exposure", "points": p, "sentence": "s",
+                 "ip": "203.0.113.1", "port": 3389, "module": "rdp", "product": prod, "version": None, "cves": "[]",
+                 "attribution": "direct", "source": "scan_hostname", "observed_at": TS}
+                for d, prod, p in [("a.com", "OpenSSH", 45), ("b.com", "OpenSSH", 45), ("b.com", "MySQL", 0),
+                                   ("c.com", "Remote Desktop Protocol", 45)]]
+    accounts = [{"domain": d, "rank": i} for i, d in enumerate(["a.com", "b.com", "c.com"], 1)]
+    art = tmp_path / "a.duckdb"
+    write_artifact(art, {"scoring_config_version": "765eef67e0c5"}, accounts, findings, [("direct", "x", 1)])
+    key = tmp_path / "key.json"
+    key.write_text(_json.dumps({"key": {
+        "L01": {"domain": "a.com", "rank_ours": 1, "rank_cvss": None, "rank_random": None},
+        "L02": {"domain": "b.com", "rank_ours": 2, "rank_cvss": None, "rank_random": None},
+        "L03": {"domain": "c.com", "rank_ours": None, "rank_cvss": 1, "rank_random": None}}}))
+    spec = importlib.util.spec_from_file_location("cfe", Path(__file__).parents[1] / "scripts" / "count_false_exposures.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    res = mod.count(art, key)
+    assert res["lists"]["ours"] == {"accounts": 2, "with_false_exposure": 2, "lose_exposure_points": 1,
+                                    "awarded_exposure_was_false": 2}
+    assert res["lists"]["cvss"]["with_false_exposure"] == 0

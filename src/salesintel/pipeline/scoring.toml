@@ -52,6 +52,12 @@ ethernetip = "EtherNet/IP (industrial control)"
 bacnet = "BACnet (building automation)"
 fox = "Niagara Fox (building automation)"
 
+# D55: the module names the probe that ran, not always the service that answered. An exposure
+# counts only when the identified product is absent or is not a generic SSH / FTP / HTTP / proxy
+# server (e.g. `rdp` answered by OpenSSH is not an exposed RDP).
+[exposure_guard]
+other_service_product = "\\b(openssh|dropbear|ssh|proftpd|vsftpd|pure-ftpd|filezilla|ftp|nginx|apache|iis|lighttpd|openresty|squid|ncat|caddy|envoy|tomcat|jetty)\\b|http|proxy"
+
 [neglect]
 deprecated_tls = ["SSLv2", "SSLv3", "TLSv1", "TLSv1.1"]
 

@@ -46,8 +46,9 @@ finding, the human eval (C2), the hosted list, the write-up.
 **Throughput claims:** only measured figures are quoted. Full-file extract: 9 min 07 s on 8 cores
 / 7 workers, ~26.7k records/s, peak RSS ~0.5 GB, feature layer 1.03 GB [M] (DATA_NOTES 5c).
 
-**Weights frozen** 2026-10-28 at scoring config `765eef67e0c5` (D50), ahead of the Thursday-morning
-slot; labelling can start once the label pool is exported.
+**Weights frozen** 2026-10-28 at scoring config `765eef67e0c5` (D50) for the C2 evaluation
+(`data-v1`). After C2, the evidence-correctness fix D55 gives config `6bacfc84480b` for `data-v2`;
+weights are unchanged.
 
 **UI spec:** `docs/design/ui.md` (Thursday build).
 

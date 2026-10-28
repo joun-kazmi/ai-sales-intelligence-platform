@@ -324,9 +324,14 @@ reset rows were seen once in run 1. Next to run 1 (human, evidence v1): ours 0.8
 Shodan module names the probe that ran, not always the service that answered. Of 382
 exposed-service findings, ~13 (3.4%) carry a product of a different service: `rdp` answered by
 OpenSSH / ProFTPD / RPC over HTTP (3), `telnet` by OpenSSH (5), `ms-sql` by nginx (2), `mysql` by
-nginx (1), `dnp3` by nginx / Ncat (2). Proposed fix (not applied; the config is frozen and the C2
-pool is being labelled): count an exposure only when the identified product is absent or is not a
-generic SSH / FTP / HTTP / proxy server. Open decision for the owner.
+nginx (1), `dnp3` by nginx / Ncat (2). Fixed after the C2 runs (D55, config `6bacfc84480b`): an
+exposure counts only when the identified product is absent or is not a generic SSH / FTP / HTTP /
+proxy server. Effect on the domain-complete sample [M]: exposure findings 390 -> 377 (13 removed);
+no other finding changed (one account's genuine second exposure now carries the 45 points instead
+of the false one). Default-view tiers: Tier 1 55 -> 51, Tier 2 299 -> 297; accounts changing tier:
+Tier 2 -> unranked 4, Tier 1 -> Tier 2 2, Tier 1 -> Tier 3 2. On the sample's own dev pool, 2 of
+our top 20 had a false exposure (both lose their exposure points). The write-up figure comes from
+the real pool: `scripts/count_false_exposures.py out/full/artifact.duckdb out/full/c2/key.json`.
 
 **UI on the full artifact [M]** (`data-v1`, owner's machine): page times 15-179 ms (slowest
 `/plays`, which counts five plays); CSV export of the default view 169,285 rows / 34 MB / 2.0 s,

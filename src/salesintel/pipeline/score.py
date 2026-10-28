@@ -41,6 +41,7 @@ class Config:
     raw: dict
     ubiquitous: frozenset[str]
     panel: re.Pattern
+    other_service: re.Pattern
     parked: re.Pattern
     residential: re.Pattern
     vendor_o: re.Pattern
@@ -63,6 +64,7 @@ def load_config(toml_path: Path = SCORING_TOML, ubiq_path: Path = UBIQUITOUS_TXT
         raw=raw,
         ubiquitous=ubiq,
         panel=re.compile(raw["facts"]["panel_title"], re.I),
+        other_service=re.compile(raw["exposure_guard"]["other_service_product"], re.I),
         parked=re.compile(el["parked_title"], re.I),
         residential=re.compile(el["residential_org"], re.I),
         vendor_o=re.compile(el["vendor_cert_o"], re.I),
@@ -106,6 +108,12 @@ def _parse_cert(ts: str | None) -> datetime | None:
         return datetime.strptime(ts[:14], "%Y%m%d%H%M%S").replace(tzinfo=UTC) if ts else None
     except ValueError:
         return None
+
+
+def is_other_service(product: str | None, cfg: Config) -> bool:
+    """True when the probe of an exposure module was answered by a generic SSH / FTP / HTTP /
+    proxy server, i.e. the named service was not what answered (D55)."""
+    return bool(product) and bool(cfg.other_service.search(product))
 
 
 def cert_state(r: dict, expiring_days: int) -> str | None:
@@ -177,7 +185,7 @@ def account_findings(domain: str, records: list[dict], cfg: Config) -> list[Find
             continue  # edge banners describe the CDN, never the customer (D24)
         base = dict(ip=r["ip"], port=r["port"], module=r["module"], attribution=r["attribution"],
                     source=r["source"], observed_at=r["timestamp"])
-        if r["module"] in modules:
+        if r["module"] in modules and not is_other_service(r["product"], cfg):
             label = modules[r["module"]]
             out.append(Finding("exposed_service", "exposure", 0,
                                f"Exposed {label} on {_where(r)} (detected by Shodan module {r['module']}), observed on {_date(r['timestamp'])}.",
