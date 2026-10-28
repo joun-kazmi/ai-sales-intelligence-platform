@@ -4,7 +4,8 @@ A small hosted app that helps an SDR at a cybersecurity vendor find, rank and ta
 companies most likely to need help with their external attack surface right now, with the
 evidence for every point of every score.
 
-- **Hosted app:** link and reviewer credentials are provided separately (basic auth, noindex). The
+- **Hosted app:** https://salesintel-g8b6.onrender.com/ (reviewer credentials provided
+  separately; basic auth, noindex). The
   free host sleeps when idle: the first request after a pause downloads the artifact again and
   can take a minute.
 - **Brief:** `docs/ASSIGNMENT.md`. Design: `docs/design/`. Every decision with its options and
@@ -250,7 +251,8 @@ cannot show and which we did not fake.
   recommending and the owner deciding; every decision went into `docs/DECISIONS.md` with the
   options that lost. The agent worked on a 1-in-160 line sample and the domain-complete sample;
   full-file runs happened on the owner's machine and came back as measured figures. Two external
-  reviews of the design were triaged item by item into decisions (D23-D41).
+  reviews of the design were triaged item by item into decisions (D23-D41). The coding agent's own
+  usage cost was not tracked.
 - **Measuring the AI that is in the product's evaluation.** No LLM is in scoring. The one LLM in the
   loop is the C2 second rater (section 4): its agreement with the human is reported (kappa 0.551),
   and so is its cost: 55,127 input / 12,631 output tokens for 60 accounts, **$0.063 at the list
@@ -303,10 +305,12 @@ uv run salesintel-score out/full/features/<sha256> --out out/full/artifact.duckd
 
 # evaluation
 uv run salesintel-dnscheck out/full/features/<sha256> --out out/full/c1              # C1
-uv run salesintel-sensitivity out/sample/features/<sha256> --out out/c4.json --sample-modulus 20   # C4
-uv run salesintel-labelpool build out/full/artifact.duckdb out/full/features/<sha256> --out out/full/c2
-uv run salesintel-labelpool ai-label out/full/c2 --provider openai --model <model>  # LLM_BASE_URL, LLM_API_KEY
-uv run salesintel-labelpool evaluate out/full/c2 --rater human|ai                   # C2
+# C4 on the domain-complete sample (modulus 20)
+uv run salesintel-sensitivity <sample features dir> --out out/c4.json --sample-modulus 20
+# C2 run 2, as run (LLM_API_KEY in the environment)
+uv run salesintel-labelpool build out/full/artifact.duckdb out/full/features/<sha256> --out out/full/c2v2 --from out/full/c2
+LLM_BASE_URL=https://integrate.api.nvidia.com/v1 uv run salesintel-labelpool ai-label out/full/c2v2 --provider openai --model nvidia/nemotron-3-ultra-550b-a55b --no-thinking --price-in 0.60 --price-out 2.40
+uv run salesintel-labelpool evaluate out/full/c2v2 --rater ai
 
 # app on a local artifact
 APP_USERNAME=demo APP_PASSWORD=demo ARTIFACT_PATH=out/full/artifact.duckdb \
