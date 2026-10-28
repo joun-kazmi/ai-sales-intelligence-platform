@@ -21,6 +21,7 @@ pipeline = [
 
 llm = [
     "anthropic>=0.70",
+    "openai>=1.50",
 ]
 
 [project.scripts]

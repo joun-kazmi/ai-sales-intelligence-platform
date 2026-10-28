@@ -154,6 +154,12 @@ human|ai` reports precision@20 from either sheet, plus human-vs-AI agreement on 
 (percent agreement, Cohen's kappa) over the rows the human labelled. Server-side refusal fallbacks
 are off so the rater's model never changes mid-run; a refusal is counted and labelled "unknown".
 The AI cannot browse, while the human may look a domain up: an asymmetry stated with the result.
+A second provider (D58), `--provider openai`, calls any OpenAI-compatible endpoint (OpenRouter by
+default, NVIDIA, ...) with the same rubric, delimiting and injection handling, `temperature 0` and
+`response_format: json_schema` (falling back to `json_object` plus Pydantic validation when a
+provider rejects it). Cost is OpenRouter's reported `usage.cost` when present, else computed from
+`--price-in/--price-out`, else recorded as unknown. Both providers retry 429 / 5xx with backoff and
+save progress after every row; a rerun resumes.
 
 **Nothing in the pipeline or the app.** The account classifier (display name, industry,
 real business vs ISP / hoster / personal / parked) stays design only; the MVP uses TLD and keyword

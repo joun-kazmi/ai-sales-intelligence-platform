@@ -6,15 +6,18 @@ evidence is untrusted record content: it is delimited and the model is told to i
 instructions inside it. Writes ai_labels.csv and ai_run.json (model, prompt hash, tokens, cost).
 
     ANTHROPIC_API_KEY=... salesintel-labelpool ai-label out/full/c2
+    LLM_API_KEY=... salesintel-labelpool ai-label out/full/c2 --provider openai --model <id>   (D58)
 """
 
 import csv
 import hashlib
 import json
+import os
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
@@ -95,39 +98,202 @@ def label_one(client: Any, model: str, domain: str, evidence: str) -> tuple[dict
     return out, response.usage
 
 
-def run(out: Path, client: Any = None, model: str = DEFAULT_MODEL, force: bool = False) -> dict:
-    sheet, target = out / "labels.csv", out / "ai_labels.csv"
-    if target.exists() and not force:
-        raise SystemExit(f"{target} exists; pass --force to relabel")
-    if client is None:
-        import anthropic  # optional extra `llm`; reads ANTHROPIC_API_KEY from the environment
+# ---------------------------------------------------------------- OpenAI-compatible provider (D58)
 
-        client = anthropic.Anthropic()
+DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
+JSON_OBJECT_HINT = ("\n\nReply with only a JSON object with the keys real_org, own_asset, credible_opener, "
+                    "worth_a_call (each \"yes\", \"no\" or \"unknown\") and rationale (one sentence).")
+
+
+def label_schema() -> dict:
+    schema = Label.model_json_schema()
+    schema["additionalProperties"] = False  # strict json_schema mode requires a closed object
+    return schema
+
+
+class OpenAICompatLabeller:
+    """Chat Completions against any OpenAI-compatible endpoint (OpenRouter, NVIDIA, ...).
+
+    Tries `response_format: json_schema` first; if the provider rejects it, switches to
+    `json_object` for the rest of the run and validates with Pydantic. Invalid or refused output
+    becomes "unknown" and is counted.
+    """
+
+    def __init__(self, client: Any, model: str, base_url: str):
+        self.client, self.model, self.base_url = client, model, base_url
+        self.mode = "json_schema"
+        self.openrouter = "openrouter.ai" in base_url
+
+    def _request(self, user: str) -> Any:
+        system = SYSTEM + (JSON_OBJECT_HINT if self.mode == "json_object" else "")
+        kw: dict[str, Any] = {
+            "model": self.model, "temperature": 0, "max_tokens": 1000,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        }
+        if self.mode == "json_schema":
+            kw["response_format"] = {"type": "json_schema",
+                                     "json_schema": {"name": "label", "strict": True, "schema": label_schema()}}
+        else:
+            kw["response_format"] = {"type": "json_object"}
+        if self.openrouter:
+            kw["extra_body"] = {"usage": {"include": True}}  # OpenRouter usage accounting: actual cost
+        return self.client.chat.completions.create(**kw)
+
+    def __call__(self, domain: str, evidence: str) -> tuple[dict, dict]:
+        user = USER_TEMPLATE.format(domain=_neutralize(domain), evidence=_neutralize(evidence))
+        try:
+            resp = self._request(user)
+        except Exception as e:  # noqa: BLE001 - only a 400 on the json_schema attempt is handled here
+            if self.mode == "json_schema" and getattr(e, "status_code", None) == 400:
+                self.mode = "json_object"
+                resp = self._request(user)
+            else:
+                raise
+        choice = resp.choices[0]
+        msg = choice.message
+        usage = resp.usage
+        cost = getattr(usage, "cost", None)
+        if cost is None and getattr(usage, "model_extra", None):
+            cost = usage.model_extra.get("cost")
+        u = {"input": getattr(usage, "prompt_tokens", 0) or 0, "output": getattr(usage, "completion_tokens", 0) or 0,
+             "cost": float(cost) if cost is not None else None}
+        if getattr(msg, "refusal", None) or not msg.content:
+            return {q: "unknown" for q in QUESTIONS} | {"rationale": "", "stop_reason": "refusal"}, u
+        try:
+            lab = Label.model_validate_json(msg.content).model_dump()
+            return lab | {"stop_reason": str(choice.finish_reason)}, u
+        except ValueError:  # pydantic ValidationError subclasses ValueError; also covers bad JSON
+            return {q: "unknown" for q in QUESTIONS} | {"rationale": "", "stop_reason": "invalid"}, u
+
+
+class AnthropicLabeller:
+    def __init__(self, client: Any, model: str):
+        self.client, self.model, self.mode = client, model, "parse"
+
+    def __call__(self, domain: str, evidence: str) -> tuple[dict, dict]:
+        lab, usage = label_one(self.client, self.model, domain, evidence)
+        return lab, {"input": getattr(usage, "input_tokens", 0) or 0,
+                     "output": getattr(usage, "output_tokens", 0) or 0, "cost": None}
+
+
+# ---------------------------------------------------------------- shared run loop
+
+RETRY_DELAYS = (2, 4, 8, 16)  # seconds; on 429 and 5xx only
+
+
+def with_retry(fn, *args, sleep=time.sleep):
+    for attempt in range(len(RETRY_DELAYS) + 1):
+        try:
+            return fn(*args)
+        except Exception as e:  # noqa: BLE001
+            status = getattr(e, "status_code", None)
+            if attempt < len(RETRY_DELAYS) and status is not None and (status == 429 or status >= 500):
+                sleep(RETRY_DELAYS[attempt])
+                continue
+            raise
+
+
+FIELDS = ["id", "domain", *QUESTIONS, "rationale", "stop_reason"]
+
+
+def _write_labels(target: Path, rows: list[dict]) -> None:
+    with atomic_file(target) as tmp, open(tmp, "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=FIELDS)
+        w.writeheader()
+        w.writerows(rows)
+
+
+def run(out: Path, client: Any = None, model: str | None = None, force: bool = False, provider: str = "anthropic",
+        base_url: str | None = None, price_in: float | None = None, price_out: float | None = None,
+        sleep=time.sleep) -> dict:
+    """Label every row of labels.csv; progress is saved after each row and a rerun resumes."""
+    sheet, target, runfile = out / "labels.csv", out / "ai_labels.csv", out / "ai_run.json"
+    previous = json.loads(runfile.read_text()) if runfile.exists() else {}
+    if target.exists() and previous.get("complete", True) and not force:
+        raise SystemExit(f"{target} exists; pass --force to relabel")
+    resume = target.exists() and not previous.get("complete", True) and not force
+    if resume and (previous.get("provider", "anthropic"), previous.get("model")) != (provider, model or DEFAULT_MODEL):
+        raise SystemExit("a partial run with a different provider or model exists; pass --force to restart")
+
+    if provider == "anthropic":
+        model = model or DEFAULT_MODEL
+        if client is None:
+            import anthropic  # optional extra `llm`; reads ANTHROPIC_API_KEY from the environment
+
+            client = anthropic.Anthropic()
+        labeller: Any = AnthropicLabeller(client, model)
+        host = "api.anthropic.com"
+    elif provider == "openai":
+        if not model:
+            raise SystemExit("--model is required with --provider openai")
+        base_url = base_url or os.environ.get("LLM_BASE_URL") or DEFAULT_BASE_URL
+        if client is None:
+            key = os.environ.get("LLM_API_KEY")
+            if not key:
+                raise SystemExit("LLM_API_KEY is not set")
+            import openai  # optional extra `llm`
+
+            client = openai.OpenAI(base_url=base_url, api_key=key, max_retries=0)  # our retry policy only
+        labeller = OpenAICompatLabeller(client, model, base_url)
+        host = urlparse(base_url).hostname
+    else:
+        raise SystemExit(f"unknown provider {provider}")
+
     with open(sheet, newline="") as fh:
         rows = [{"id": r["id"], "domain": r["domain"], "evidence": r["evidence"]} for r in csv.DictReader(fh)]
+    done: list[dict] = []
+    totals = {"input": 0, "output": 0, "reported_cost": 0.0, "reported_rows": 0, "calls": 0,
+              "refusals": 0, "invalid": 0}
+    if resume:
+        with open(target, newline="") as fh:
+            done = list(csv.DictReader(fh))
+        totals.update(previous.get("totals", {}))
+    seen = {r["id"] for r in done}
+    started = previous.get("started_at") if resume else datetime.now(UTC).isoformat(timespec="seconds")
+    t0 = time.monotonic()
 
-    started, t0 = datetime.now(UTC), time.monotonic()
-    tokens_in = tokens_out = refusals = 0
-    labelled = []
+    def meta(complete: bool) -> dict:
+        p_in, p_out = (price_in, price_out) if price_in is not None and price_out is not None else \
+            PRICES.get(model, (None, None)) if provider == "anthropic" else (None, None)
+        if provider == "openai" and totals["calls"] and totals["reported_rows"] == totals["calls"]:
+            cost, source, note = round(totals["reported_cost"], 6), "reported", "OpenRouter usage.cost, summed"
+        elif p_in is not None:
+            cost = round(totals["input"] / 1e6 * p_in + totals["output"] / 1e6 * p_out, 6)
+            source = "computed"
+            note = PRICE_SOURCE if provider == "anthropic" and price_in is None else "from --price-in/--price-out"
+        else:
+            cost, source = None, "unknown"
+            note = "provider reported no cost and no --price-in/--price-out were given"
+        return {
+            "kind": "c2_ai_labels", "provider": provider, "base_url_host": host, "model": model,
+            "prompt_sha256": prompt_hash(model), "structured_output": labeller.mode,
+            "accounts": len(rows), "labelled": len(done), "complete": complete,
+            "input_tokens": totals["input"], "output_tokens": totals["output"],
+            "cost_usd": cost, "cost_source": source, "cost_note": note, "price_source": note,
+            "refusals": totals["refusals"], "invalid": totals["invalid"],
+            "temperature": 0 if provider == "openai" else None,
+            "effort": "medium" if provider == "anthropic" else None, "server_side_fallbacks": False,
+            "started_at": started, "seconds_this_run": round(time.monotonic() - t0, 1),
+            "code_commit": code_commit(), "totals": totals,
+        }
+
     for r in rows:
-        lab, usage = label_one(client, model, r["domain"], r["evidence"])
-        tokens_in += getattr(usage, "input_tokens", 0) or 0
-        tokens_out += getattr(usage, "output_tokens", 0) or 0
-        refusals += lab["stop_reason"] == "refusal"
-        labelled.append({"id": r["id"], "domain": r["domain"], **lab})
-
-    with atomic_file(target) as tmp, open(tmp, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["id", "domain", *QUESTIONS, "rationale", "stop_reason"])
-        w.writeheader()
-        w.writerows(labelled)
-    price_in, price_out = PRICES.get(model, (None, None))
-    cost = None if price_in is None else round(tokens_in / 1e6 * price_in + tokens_out / 1e6 * price_out, 4)
-    meta = {
-        "kind": "c2_ai_labels", "model": model, "prompt_sha256": prompt_hash(model), "accounts": len(rows),
-        "input_tokens": tokens_in, "output_tokens": tokens_out, "cost_usd": cost, "price_source": PRICE_SOURCE,
-        "refusals": refusals, "effort": "medium", "server_side_fallbacks": False,
-        "started_at": started.isoformat(timespec="seconds"), "seconds": round(time.monotonic() - t0, 1),
-        "code_commit": code_commit(),
-    }
-    write_json(out / "ai_run.json", meta)
-    return meta
+        if r["id"] in seen:
+            continue
+        lab, u = with_retry(labeller, r["domain"], r["evidence"], sleep=sleep)
+        totals["calls"] += 1
+        totals["input"] += u["input"]
+        totals["output"] += u["output"]
+        if u["cost"] is not None:
+            totals["reported_cost"] += u["cost"]
+            totals["reported_rows"] += 1
+        totals["refusals"] += lab["stop_reason"] == "refusal"
+        totals["invalid"] += lab["stop_reason"] == "invalid"
+        done.append({"id": r["id"], "domain": r["domain"], **{k: lab[k] for k in FIELDS[2:]}})
+        _write_labels(target, done)  # progress per row: a crash keeps what is done
+        write_json(runfile, meta(complete=False))
+    if not rows:
+        _write_labels(target, done)
+    final = meta(complete=True)
+    write_json(runfile, final)
+    return final

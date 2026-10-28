@@ -538,3 +538,20 @@ One entry per decision: decision, options considered, why, date.
 - **Why**: Owner's call. The human labels stay the measurement; the AI rater shows "how we know
   it's right and what it costs" (brief) by its agreement with the human, with real token cost
   logged. Fallbacks off because a fallback would switch the rater's model inside a measurement.
+
+## D58. OpenAI-compatible provider for the AI second rater (2026-10-28)
+- **Decision**: `ai-label --provider openai` uses the openai SDK against `LLM_BASE_URL` (default
+  OpenRouter) with `LLM_API_KEY` (never logged) and a required `--model`. Same rubric, evidence
+  delimiting and never-touch-labels.csv rule as the Anthropic path, which is unchanged in behaviour.
+  Structured output via `response_format: json_schema` (strict, from the same Pydantic model),
+  `temperature 0`; if the provider rejects json_schema (HTTP 400), the run switches to `json_object`
+  and validates with Pydantic. Refused or invalid output is "unknown" and counted (`refusals`,
+  `invalid`). Cost: OpenRouter's `usage.cost` (usage accounting requested) when every call reported
+  one ("reported"), else tokens x `--price-in/--price-out` ("computed"), else null ("unknown").
+  `ai_run.json` records provider, base-URL host, model, prompt hash, structured-output mode, tokens,
+  cost and its source. Retries on 429 / 5xx with 2-4-8-16 s backoff (SDK retries off); progress is
+  saved after each row and a rerun with the same provider and model resumes.
+- **Options**: Anthropic only (D57); call each provider's native API.
+- **Why**: The owner has OpenRouter / NVIDIA keys, not an Anthropic key. The Chat Completions shape
+  covers both. A measurement needs every row and an honest cost, so partial runs must survive and
+  the cost source must be explicit.
