@@ -244,6 +244,21 @@ accounts, whose evidence always fits. A harness bias against large accounts. (2)
 "a CVE is visible" exactly; `own_asset` was left blank, so weak single-IP reverse-DNS links were not
 penalised. Run 1 stays on record; evidence v2 and a stricter precision follow (D59).
 
+**C2 run 2 pool build [M]** (owner's machine, `main` `232f6d8`, full `data-v1` artifact + full
+feature layer, `build --out out/full/c2v2 --from out/full/c2`): 4 min 04 s wall, peak RSS 0.95 GB,
+exit 0. `rows_reset_for_relabelling` 20, `rows_labels_copied` 40. Checked by the owner: the 20
+reset rows are exactly the 20 rows truncated in run 1; of the 40 copied rows, 34 have byte-identical
+evidence and 6 differ only by ordering or collapsing; the 5 rows showing "(verified)" are all among
+the reset rows; the same 20 rows are still truncated at 12 lines in v2, now worst-first;
+`out/full/c2` is byte-identical before and after (sha256). Code reviewed by the owner, no issues.
+
+Caveats to state with the run-2 numbers (write-up):
+- `own_asset` was blank on all 60 rows in run 1, so the strict precision (worth_a_call AND
+  own_asset) needs own_asset filled on all 60 rows in run 2, including the 40 rows whose other labels
+  were copied from run 1.
+- The 20 relabelled rows were seen once before in run 1 (with cut-off evidence), so run 2 is not
+  fully blind for them.
+
 **False exposures [M]** (sample artifact, config `765eef67e0c5`, found while checking the UI): the
 Shodan module names the probe that ran, not always the service that answered. Of 382
 exposed-service findings, ~13 (3.4%) carry a product of a different service: `rdp` answered by
