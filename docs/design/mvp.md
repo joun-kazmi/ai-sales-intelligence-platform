@@ -55,8 +55,12 @@ slot; labelling can start once the label pool is exported.
 the obvious non-prospects and does not classify the rest. Known MVP shortcut: the end-of-life play
 matches "end-of-life" in the finding sentence, because the artifact has no separate EOL flag
 (`ui.md`). C1: certificate-name links (labelled High) matched DNS less often than Medium sources
-(open question, DATA_NOTES 5c). C2 run 2: not fully blind for the 20 relabelled rows (seen in run 1
-with cut-off evidence), and the strict precision needs own_asset on all 60 rows (DATA_NOTES 5c).
+(open question, DATA_NOTES 5c). C2 scope cut (D60): human labelling stopped. The human measurement is
+run 1 (complete, with its recorded truncation flaw); no human run-2 precision and no strict
+worth_a_call AND own_asset precision are reported. Run 2 is the AI rater on all 60 c2v2 rows, with
+human-vs-AI agreement on the 45 human-labelled rows and the logged cost; the 15 unlabelled rows are
+all reset rows, and the human labels on the 5 labelled reset rows are not fully blind (seen in run 1
+with cut-off evidence) (DATA_NOTES 5c).
 
 **Hosted artifact hard cap: 100 MB** (NFR3). Publishing fails above it; the fallback is Tier 1-2
 accounts with full evidence plus counts for the rest.

@@ -573,3 +573,16 @@ One entry per decision: decision, options considered, why, date.
   ranking into the "neutral" evidence; a fixed severity rule does not. Reusing ids and labels keeps
   the comparison paired and the relabelling small. Labels tracked "a CVE is visible", so own_asset
   is needed to penalise weak links.
+
+## D60. Scope cut: no more human labelling for C2 (2026-10-29, amends D59)
+- **Decision**: Stop human labelling. The run-2 human sheet stays as is (worth_a_call 45/60, the 15
+  unlabelled rows all reset rows; own_asset 21/60). No human run-2 precision is reported, and the
+  strict worth_a_call AND own_asset precision (D59) is dropped from the write-up. Human measurement =
+  run 1 (complete, with its recorded truncation flaw). Run 2 = the AI rater (D57/D58) on the full
+  c2v2 sheet (all 60 rows), reported with human-vs-AI agreement on the 45 human-labelled rows and
+  the logged cost. No code changes.
+- **Options**: finish the 15 rows and own_asset on all 60 (D59 plan); report human run-2 precision
+  on the 45 rows.
+- **Why**: Owner's call on time. A precision@20 over a partial sheet is not comparable to run 1;
+  agreement on a partial sheet is supported (D57) and still answers how far the AI rater can be
+  trusted, at a known cost.

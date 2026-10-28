@@ -252,12 +252,18 @@ evidence and 6 differ only by ordering or collapsing; the 5 rows showing "(verif
 the reset rows; the same 20 rows are still truncated at 12 lines in v2, now worst-first;
 `out/full/c2` is byte-identical before and after (sha256). Code reviewed by the owner, no issues.
 
+**C2 run 2 scope cut [M]** (owner, 2026-10-28, D60): human labelling stopped. Human run-2 sheet:
+worth_a_call on 45/60 rows (15 reset rows unlabelled), own_asset on 21/60. No human run-2 precision
+is reported, and the strict precision (worth_a_call AND own_asset) is dropped from the write-up.
+- Human measurement = run 1 (complete, with the truncation flaw recorded above).
+- Run 2 = the AI rater (D57/D58) on the full c2v2 sheet (all 60 rows), reported with human-vs-AI
+  agreement on the 45 human-labelled rows and the logged cost (`ai_run.json`).
+
 Caveats to state with the run-2 numbers (write-up):
-- `own_asset` was blank on all 60 rows in run 1, so the strict precision (worth_a_call AND
-  own_asset) needs own_asset filled on all 60 rows in run 2, including the 40 rows whose other labels
-  were copied from run 1.
-- The 20 relabelled rows were seen once before in run 1 (with cut-off evidence), so run 2 is not
-  fully blind for them.
+- Run-2 precision is the AI rater's, not a human measurement; its credibility rests on the
+  agreement on 45 rows, which leaves out 15 of the 20 reset rows (the ones run 1 truncated).
+- The 20 relabelled rows were seen once before in run 1 (with cut-off evidence), so the human
+  labels on the 5 labelled reset rows are not fully blind.
 
 **False exposures [M]** (sample artifact, config `765eef67e0c5`, found while checking the UI): the
 Shodan module names the probe that ran, not always the service that answered. Of 382
