@@ -509,7 +509,7 @@ One entry per decision: decision, options considered, why, date.
   those runs (DATA_NOTES 5c).
 
 ## D55. Exclude false exposures, after the evaluation (2026-10-28, planned)
-- **Status**: applied 2026-10-29 on `feature/false-exposures`; scoring config `765eef67e0c5` -> `6bacfc84480b` (product pattern in `scoring.toml` `[exposure_guard]`, weights unchanged). Sample effect in DATA_NOTES 5c; `scripts/count_false_exposures.py` gives the run-1 top-20 count for the write-up.
+- **Status**: applied 2026-10-29 on `feature/false-exposures`; scoring config `765eef67e0c5` -> `6bacfc84480b` (product pattern in `scoring.toml` `[exposure_guard]`, weights unchanged). Sample effect in DATA_NOTES 5c; `scripts/count_false_exposures.py` gives the run-1 top-20 count for the write-up. Full file: ours 1/20 in the run-1 top 20, 135 of 9,899 exposures guarded (1.4%); rescored and published as `data-v2`, live on Render 2026-10-29 (DATA_NOTES 5c).
 - **Decision**: An exposed-service finding counts only when Shodan's identified product is absent
   or is not a generic SSH / FTP / HTTP / proxy server (e.g. `rdp` answered by OpenSSH does not
   count). Applied **after** the C2 labels are evaluated against the frozen `data-v1`, as an

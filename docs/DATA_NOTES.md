@@ -333,6 +333,35 @@ Tier 2 -> unranked 4, Tier 1 -> Tier 2 2, Tier 1 -> Tier 3 2. On the sample's ow
 our top 20 had a false exposure (both lose their exposure points). The write-up figure comes from
 the real pool: `scripts/count_false_exposures.py out/full/artifact.duckdb out/full/c2/key.json`.
 
+**False exposures on the full file [M]** (owner's machine, `main` `f5f1f0d`, `data-v1` artifact and
+the C2 run-1 key, read-only): of the run-1 top 20s, **ours 1/20** had a false exposure (it loses its
+exposure points; its awarded exposure was the false one), highest CVSS 0/20, random 0/20. Whole
+artifact: **135 of 9,899 exposed-service findings match the guard (1.4%**, vs ~3.4% on the sample):
+OpenSSH 62, nginx 45, Ncat http proxy 20, Microsoft IIS httpd 2, RPC over HTTP 2, ProFTPD 2,
+vsftpd 1, Cisco SSH 1; checked by the owner, all genuinely another service.
+
+**Full-file score with D55 = `data-v2` [M]** (owner's machine, `main` `f5f1f0d`, config
+`6bacfc84480b`, same feature layer, no re-extraction): **1 min 22 s wall, peak RSS 2.7 GB**,
+artifact 45,887,488 bytes. 349,520 accounts (unchanged), 485,959 findings (-135, exactly the guarded
+exposures).
+
+| Tier | All, v1 | All, v2 | Default view, v1 | Default view, v2 |
+|---|---|---|---|---|
+| 1 | 1,691 | 1,666 | 982 | 964 |
+| 2 | 7,535 | 7,493 | 6,201 | 6,165 |
+| 3 | 168,410 | 168,437 | 162,093 | 162,111 |
+| not ranked | 171,884 | 171,924 | 167,265 | 167,301 |
+
+Accounts moving tier v1 -> v2 (all accounts): Tier 1 -> Tier 3 19, Tier 1 -> Tier 2 6, Tier 2 ->
+Tier 3 8, Tier 2 -> not ranked 40; no account moved up. Default-view top-20 overlap with v1: 19/20.
+App on `artifact-v2` locally (`ARTIFACT_PATH`): `/` 38 ms, `/plays` 156 ms, CSV export 34 MB in
+1.6 s, 401 without auth.
+
+**`data-v2` published [M]** (owner, 2026-10-29): private release `data-v2` (asset `artifact.duckdb`,
+45,887,488 bytes, target `f5f1f0d07f3a41647b3572134913ac4b88d92049`); the downloaded asset's sha256
+matches the local artifact. Render's `ARTIFACT_TAG` switched to `data-v2` and redeployed; the live
+default view shows Tier 1 = 964 (v1: 982). `data-v1` stays as the release the C2 evaluation measured.
+
 **UI on the full artifact [M]** (`data-v1`, owner's machine): page times 15-179 ms (slowest
 `/plays`, which counts five plays); CSV export of the default view 169,285 rows / 34 MB / 2.0 s,
 everything 44 MB / 3.0 s; server RSS 325 MB after the exports, before the 256 MiB DuckDB cap (D56).
