@@ -61,6 +61,10 @@ flowchart LR
   Release of this (private) repo. At startup the app downloads it with a fine-grained, read-only
   token for this repo only, kept in Render env vars. Render's free disk is ephemeral, so every
   cold start re-downloads it; the README says so.
+- **Releases** [M]: `data-v1` (config `765eef67e0c5`, the ranking C2 measured) and `data-v2`
+  (config `6bacfc84480b`, D55, 45,887,488 bytes, sha256 checked after download). Render serves
+  `data-v2` since 2026-10-29 (`ARTIFACT_TAG=data-v2`); switching back is an env-var change plus a
+  redeploy (DATA_NOTES 5c).
 
 ## Scaling: what the MVP builds vs the design
 
