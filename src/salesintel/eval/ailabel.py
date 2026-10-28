@@ -101,8 +101,36 @@ def label_one(client: Any, model: str, domain: str, evidence: str) -> tuple[dict
 # ---------------------------------------------------------------- OpenAI-compatible provider (D58)
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_MAX_TOKENS = 4000  # reasoning models spend output tokens before the JSON; 1000 cut them off
 JSON_OBJECT_HINT = ("\n\nReply with only a JSON object with the keys real_org, own_asset, credible_opener, "
                     "worth_a_call (each \"yes\", \"no\" or \"unknown\") and rationale (one sentence).")
+
+
+def last_json_object(text: str) -> str | None:
+    """The last top-level {...} object in text (e.g. after a <think> block or prose), or None."""
+    dec, i, last = json.JSONDecoder(), 0, None
+    while (i := text.find("{", i)) != -1:
+        try:
+            obj, end = dec.raw_decode(text, i)
+        except ValueError:
+            i += 1
+            continue
+        if isinstance(obj, dict):
+            last = text[i:end]
+        i = end
+    return last
+
+
+def parse_label(content: str) -> dict | None:
+    """Validate the content as a Label; failing that, the last JSON object in it. None if neither."""
+    for candidate in (content, last_json_object(content)):
+        if candidate is None:
+            continue
+        try:
+            return Label.model_validate_json(candidate).model_dump()
+        except ValueError:  # pydantic ValidationError subclasses ValueError; also covers bad JSON
+            continue
+    return None
 
 
 def label_schema() -> dict:
@@ -116,18 +144,19 @@ class OpenAICompatLabeller:
 
     Tries `response_format: json_schema` first; if the provider rejects it, switches to
     `json_object` for the rest of the run and validates with Pydantic. Invalid or refused output
-    becomes "unknown" and is counted.
+    becomes "unknown" and is counted; invalid rows keep the finish_reason ("invalid:length"). Text
+    around the JSON (a <think> block, prose) is tolerated: the last {...} object is validated.
     """
 
-    def __init__(self, client: Any, model: str, base_url: str):
-        self.client, self.model, self.base_url = client, model, base_url
+    def __init__(self, client: Any, model: str, base_url: str, max_tokens: int = DEFAULT_MAX_TOKENS):
+        self.client, self.model, self.base_url, self.max_tokens = client, model, base_url, max_tokens
         self.mode = "json_schema"
         self.openrouter = "openrouter.ai" in base_url
 
     def _request(self, user: str) -> Any:
         system = SYSTEM + (JSON_OBJECT_HINT if self.mode == "json_object" else "")
         kw: dict[str, Any] = {
-            "model": self.model, "temperature": 0, "max_tokens": 1000,
+            "model": self.model, "temperature": 0, "max_tokens": self.max_tokens,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
         }
         if self.mode == "json_schema":
@@ -157,13 +186,13 @@ class OpenAICompatLabeller:
             cost = usage.model_extra.get("cost")
         u = {"input": getattr(usage, "prompt_tokens", 0) or 0, "output": getattr(usage, "completion_tokens", 0) or 0,
              "cost": float(cost) if cost is not None else None}
-        if getattr(msg, "refusal", None) or not msg.content:
+        if getattr(msg, "refusal", None):
             return {q: "unknown" for q in QUESTIONS} | {"rationale": "", "stop_reason": "refusal"}, u
-        try:
-            lab = Label.model_validate_json(msg.content).model_dump()
-            return lab | {"stop_reason": str(choice.finish_reason)}, u
-        except ValueError:  # pydantic ValidationError subclasses ValueError; also covers bad JSON
-            return {q: "unknown" for q in QUESTIONS} | {"rationale": "", "stop_reason": "invalid"}, u
+        lab = parse_label(msg.content or "")  # empty content (e.g. all tokens spent reasoning) is invalid
+        if lab is None:
+            return {q: "unknown" for q in QUESTIONS} | {"rationale": "",
+                                                        "stop_reason": f"invalid:{choice.finish_reason}"}, u
+        return lab | {"stop_reason": str(choice.finish_reason)}, u
 
 
 class AnthropicLabeller:
@@ -205,7 +234,7 @@ def _write_labels(target: Path, rows: list[dict]) -> None:
 
 def run(out: Path, client: Any = None, model: str | None = None, force: bool = False, provider: str = "anthropic",
         base_url: str | None = None, price_in: float | None = None, price_out: float | None = None,
-        sleep=time.sleep) -> dict:
+        max_tokens: int = DEFAULT_MAX_TOKENS, sleep=time.sleep) -> dict:
     """Label every row of labels.csv; progress is saved after each row and a rerun resumes."""
     sheet, target, runfile = out / "labels.csv", out / "ai_labels.csv", out / "ai_run.json"
     previous = json.loads(runfile.read_text()) if runfile.exists() else {}
@@ -234,7 +263,7 @@ def run(out: Path, client: Any = None, model: str | None = None, force: bool = F
             import openai  # optional extra `llm`
 
             client = openai.OpenAI(base_url=base_url, api_key=key, max_retries=0)  # our retry policy only
-        labeller = OpenAICompatLabeller(client, model, base_url)
+        labeller = OpenAICompatLabeller(client, model, base_url, max_tokens)
         host = urlparse(base_url).hostname
     else:
         raise SystemExit(f"unknown provider {provider}")
@@ -272,6 +301,7 @@ def run(out: Path, client: Any = None, model: str | None = None, force: bool = F
             "cost_usd": cost, "cost_source": source, "cost_note": note, "price_source": note,
             "refusals": totals["refusals"], "invalid": totals["invalid"],
             "temperature": 0 if provider == "openai" else None,
+            "max_tokens": max_tokens if provider == "openai" else None,
             "effort": "medium" if provider == "anthropic" else None, "server_side_fallbacks": False,
             "started_at": started, "seconds_this_run": round(time.monotonic() - t0, 1),
             "code_commit": code_commit(), "totals": totals,
@@ -288,7 +318,7 @@ def run(out: Path, client: Any = None, model: str | None = None, force: bool = F
             totals["reported_cost"] += u["cost"]
             totals["reported_rows"] += 1
         totals["refusals"] += lab["stop_reason"] == "refusal"
-        totals["invalid"] += lab["stop_reason"] == "invalid"
+        totals["invalid"] += lab["stop_reason"].startswith("invalid")
         done.append({"id": r["id"], "domain": r["domain"], **{k: lab[k] for k in FIELDS[2:]}})
         _write_labels(target, done)  # progress per row: a crash keeps what is done
         write_json(runfile, meta(complete=False))

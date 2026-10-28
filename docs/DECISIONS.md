@@ -586,3 +586,17 @@ One entry per decision: decision, options considered, why, date.
 - **Why**: Owner's call on time. A precision@20 over a partial sheet is not comparable to run 1;
   agreement on a partial sheet is supported (D57) and still answers how far the AI rater can be
   trusted, at a known cost.
+
+## D61. AI rater: output-token budget, finish reason, JSON extraction (2026-10-29, amends D58)
+- **Decision**: The OpenAI-compatible path takes `--max-tokens` (default 4000, was a hard-coded
+  1000) and records it in `ai_run.json`. Invalid rows keep the provider's finish reason in
+  `stop_reason` (`invalid:length`, `invalid:stop`); empty content without a refusal is now invalid,
+  not a refusal. Before validating, if the whole content is not a valid label, the last top-level
+  `{...}` object in it (after a `<think>` block or prose) is validated; if that fails too, the row is
+  invalid as before. The Anthropic path is unchanged.
+- **Options**: raise the cap only; strip `<think>` tags specifically; retry invalid rows.
+- **Why**: The first c2v2 run on a reasoning model returned 8/15 invalid rows at ~870 of 1000 output
+  tokens (DATA_NOTES 5c), most likely cut off before the JSON. A larger budget fixes the likely
+  cause, the finish reason shows whether it was the cause, and extracting the last object handles
+  models that put reasoning in the content without guessing their tag format. No retries: a retry
+  would hide a systematic failure that the invalid count should show.

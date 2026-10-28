@@ -212,7 +212,8 @@ def _err(cls, status):
 
 
 class FakeOpenAI:
-    """Chat Completions double. `script` maps a call number to an exception or a raw content string."""
+    """Chat Completions double. `script` maps a call number to an exception, a raw content string, or a
+    (content, finish_reason) pair."""
 
     def __init__(self, script=None, cost=0.0004, reject_schema=False):
         self.calls, self.script, self.cost, self.reject_schema = [], script or {}, cost, reject_schema
@@ -226,6 +227,9 @@ class FakeOpenAI:
         step = self.script.get(n)
         if isinstance(step, Exception):
             raise step
+        finish = "stop"
+        if isinstance(step, tuple):
+            step, finish = step
         user = kw["messages"][1]["content"]
         ans = "yes" if " rdp" in user else "no"
         content = step if isinstance(step, str) else json.dumps(
@@ -235,7 +239,7 @@ class FakeOpenAI:
         if self.cost is not None:
             usage.cost = self.cost
         return _ns(choices=[_ns(message=_ns(content=None if refusal else content, refusal=refusal),
-                                finish_reason="stop")], usage=usage)
+                                finish_reason=finish)], usage=usage)
 
 
 def _openai_run(out, client, **kw):
@@ -285,6 +289,51 @@ def test_openai_falls_back_to_json_object_and_counts_bad_output(tmp_path, scored
     assert meta["cost_usd"] is None and meta["cost_source"] == "unknown" and meta["base_url_host"] == "integrate.api.nvidia.com"
     ai = list(csv.DictReader(open(out / "ai_labels.csv")))
     assert sum(r["worth_a_call"] == "unknown" for r in ai) >= 2
+
+
+def test_openai_max_tokens_default_and_flag(tmp_path, scored, monkeypatch):
+    out = _pool(tmp_path, scored, k=1)
+    client = FakeOpenAI()
+    meta = _openai_run(out, client)
+    assert all(c["max_tokens"] == 4000 for c in client.calls) and meta["max_tokens"] == 4000
+    client = FakeOpenAI()
+    meta = _openai_run(out, client, force=True, max_tokens=8000)
+    assert all(c["max_tokens"] == 8000 for c in client.calls) and meta["max_tokens"] == 8000
+    seen = {}
+    monkeypatch.setattr(ailabel, "run", lambda out, **kw: seen.update(kw) or {})
+    labelpool.main(["ai-label", str(out), "--provider", "openai", "--model", "m", "--max-tokens", "6000"])
+    assert seen["max_tokens"] == 6000
+    labelpool.main(["ai-label", str(out), "--provider", "openai", "--model", "m"])
+    assert seen["max_tokens"] == 4000
+
+
+def test_openai_invalid_keeps_finish_reason(tmp_path, scored):
+    out = _pool(tmp_path, scored, k=3)
+    cut = '<think>The evidence shows RDP exposed, so'  # reasoning cut off before any JSON
+    client = FakeOpenAI(script={1: (cut, "length"), 2: ('{"real_org": "yes", "own_asset"', "length"),
+                                3: ("", "length")})
+    meta = _openai_run(out, client)
+    ai = list(csv.DictReader(open(out / "ai_labels.csv")))
+    assert [r["stop_reason"] for r in ai[:3]] == ["invalid:length"] * 3
+    assert all(r["worth_a_call"] == "unknown" for r in ai[:3])
+    assert meta["invalid"] == 3 and meta["refusals"] == 0  # empty content is invalid, not a refusal
+
+
+def test_openai_extracts_last_json_object_around_text(tmp_path, scored):
+    lab = {"real_org": "yes", "own_asset": "no", "credible_opener": "yes", "worth_a_call": "yes", "rationale": "t"}
+    think = '<think>Draft: {"worth_a_call": "no"} ... no, RDP is exposed; {braces} in prose.</think>\n'
+    assert ailabel.parse_label(think + json.dumps(lab)) == lab
+    assert ailabel.parse_label("Here is my answer:\n" + json.dumps(lab) + "\nHope this helps.") == lab
+    assert ailabel.parse_label(json.dumps(lab | {"worth_a_call": "no"}) + " then " + json.dumps(lab)) == lab
+    assert ailabel.parse_label(think + '{"worth_a_call": "maybe"}') is None  # last object fails the schema
+    assert ailabel.parse_label("<think>no json here</think>") is None
+    out = _pool(tmp_path, scored, k=3)
+    client = FakeOpenAI(script={1: think + json.dumps(lab), 2: think + '{"worth_a_call": "maybe"}'})
+    meta = _openai_run(out, client)
+    ai = list(csv.DictReader(open(out / "ai_labels.csv")))
+    assert ai[0]["own_asset"] == "no" and ai[0]["worth_a_call"] == "yes" and ai[0]["stop_reason"] == "stop"
+    assert ai[1]["stop_reason"] == "invalid:stop" and ai[1]["worth_a_call"] == "unknown"
+    assert meta["invalid"] == 1
 
 
 def test_openai_retries_429_and_5xx_with_backoff(tmp_path, scored):

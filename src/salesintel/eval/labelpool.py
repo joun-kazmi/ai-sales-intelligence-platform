@@ -328,6 +328,8 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--model", default=None, help="anthropic: default latest Claude Sonnet; openai: required")
     a.add_argument("--price-in", type=float, help="USD per million input tokens, if the provider reports no cost")
     a.add_argument("--price-out", type=float, help="USD per million output tokens")
+    a.add_argument("--max-tokens", type=int, default=4000,
+                   help="openai: max output tokens per call (reasoning models need room before the JSON)")
     a.add_argument("--force", action="store_true", help="overwrite ai_labels.csv")
     args = ap.parse_args(argv)
     if args.cmd == "build":
@@ -340,7 +342,7 @@ def main(argv: list[str] | None = None) -> None:
         if (args.price_in is None) != (args.price_out is None):
             raise SystemExit("--price-in and --price-out go together")
         res = ailabel.run(args.out, model=args.model, force=args.force, provider=args.provider,
-                          price_in=args.price_in, price_out=args.price_out)
+                          price_in=args.price_in, price_out=args.price_out, max_tokens=args.max_tokens)
     print(json.dumps(res, indent=2))
 
 

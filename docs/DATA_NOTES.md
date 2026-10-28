@@ -265,6 +265,15 @@ Caveats to state with the run-2 numbers (write-up):
 - The 20 relabelled rows were seen once before in run 1 (with cut-off evidence), so the human
   labels on the 5 labelled reset rows are not fully blind.
 
+**AI rater on c2v2, first attempt [M]** (owner's machine, 2026-10-29; NVIDIA endpoint, model
+`nvidia/nemotron-3-ultra-550b-a55b`, `json_schema` mode accepted, `max_tokens` 1000 hard-coded):
+stopped by the owner after 15/60 rows, **8 of 15 "invalid"** (7 valid). ~42 s per row, ~870 output
+tokens per call. Cause [A]: a reasoning model spending most of the 1000-token budget before the
+JSON, so the output is cut off; the run did not log `finish_reason` to confirm it. Not used as a
+result. Fix (D61): `--max-tokens` (default 4000), invalid rows keep the finish reason
+(`invalid:length`), and the last `{...}` object is extracted from text around the JSON. Rerun with
+`--force` to follow.
+
 **False exposures [M]** (sample artifact, config `765eef67e0c5`, found while checking the UI): the
 Shodan module names the probe that ran, not always the service that answered. Of 382
 exposed-service findings, ~13 (3.4%) carry a product of a different service: `rdp` answered by
