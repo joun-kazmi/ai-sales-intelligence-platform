@@ -282,12 +282,43 @@ result. Fix (D61): `--max-tokens` (default 4000), invalid rows keep the finish r
 | `nemotron-3-ultra-550b-a55b` | `chat_template_kwargs` `enable_thinking: false` | 9.7 s | 290 | valid |
 | `nemotron-3-ultra-550b-a55b` | `/no_think` in system prompt | 17.5 s | 810 | valid |
 | `nemotron-3.5-lightning-30b-a3b` | `enable_thinking: false` | 1.8 s | 159 | valid |
-| `nemotron-3.5-lightning-30b-a3b` | `/no_think` in system prompt | not recorded | 4000 | invalid:length |
+| `nemotron-3.5-lightning-30b-a3b` | `/no_think` in system prompt | 36.9 s | 4000 | invalid:length |
 | `openai/gpt-oss-20b` | `reasoning_effort` low | 90.6 s | 3898 | valid |
 
 One row per setting, so these are indicative, not rates. `enable_thinking: false` is the only
 control that kept both Nemotron models short and valid; `/no_think` does not reliably switch thinking
 off. Rater setting for the c2v2 run: `nemotron-3-ultra-550b-a55b` with `--no-thinking` (D62).
+
+**C2 run 2, AI rater [M]** (owner's machine, `main` `9fec441`, `out/full/c2v2`, evidence v2; NVIDIA
+endpoint, `nvidia/nemotron-3-ultra-550b-a55b`, `--no-thinking`, `json_schema`, `max_tokens` 4000,
+temperature 0): 60/60 labelled, invalid 0, refusals 0, every finish reason `stop`; 535 s; 55,127
+input / 12,631 output tokens. Cost **$0.063 computed** at OpenRouter's list price for this model
+($0.60 / $2.40 per M tokens); **$0 as run** on NVIDIA's free tier.
+
+| Ranking | precision@20 (worth_a_call, AI rater) | yes / no / unknown | Wilson 95% |
+|---|---|---|---|
+| Ours | **0.789** | 15 / 4 / 1 | 0.567-0.915 |
+| Highest CVSS first | **0.800** | 16 / 4 / 0 | 0.584-0.919 |
+| Random | 0.105 | 2 / 17 / 1 | 0.029-0.314 |
+
+Human vs AI on worth_a_call, over the **45 human-labelled rows** (the 40 copied rows plus 5 of the
+20 reset rows; it leaves out 15 of the 20 reset rows, the ones run 1 truncated): **75.6% agreement,
+Cohen's kappa 0.551**.
+
+| Human \ AI | yes | no | unknown |
+|---|---|---|---|
+| yes | 19 | 7 | 2 |
+| no | 0 | 15 | 0 |
+| unknown | 2 | 0 | 0 |
+
+The AI rater is stricter than the human: it never said yes where the human said no, and 7 of the
+human's 28 yes rows became no. own_asset: 21 rows compared, 66.7% agreement, kappa 0.104, too few
+rows to conclude. real_org and credible_opener have no human labels in run 2, so no agreement.
+
+Read with the caveats above: this precision is the AI rater's, not a human measurement; its
+credibility rests on agreement over 45 rows that exclude 15 of the 20 reset rows; and the 5 labelled
+reset rows were seen once in run 1. Next to run 1 (human, evidence v1): ours 0.84, highest CVSS
+1.00, random 0.21.
 
 **False exposures [M]** (sample artifact, config `765eef67e0c5`, found while checking the UI): the
 Shodan module names the probe that ran, not always the service that answered. Of 382
