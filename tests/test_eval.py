@@ -334,3 +334,118 @@ def test_openai_needs_model_and_key(tmp_path, scored, monkeypatch):
     monkeypatch.delenv("LLM_API_KEY", raising=False)
     with pytest.raises(SystemExit, match="LLM_API_KEY"):
         ailabel.run(out, provider="openai", model="m")
+
+
+# ---------- evidence v2 (D59)
+
+@pytest.fixture
+def big_account(tmp_path):
+    """bigco.com: 30 IPs; the only KEV record is on the IP that sorts last (198.51.100.99)."""
+    recs = []
+    for n in list(range(1, 30)) + [99]:
+        r = _rec(f"198.51.100.{n}", 443, "https", _shodan={"module": "https", "options": {"hostname": "www.bigco.com"}},
+                 product="nginx", version="1.26.0")
+        if n == 99:
+            r.update(product="Apache httpd", version="2.4.49",
+                     vulns={"CVE-2021-41773": {"cvss": 7.5, "epss": 0.97, "kev": True}})
+        recs.append(r)
+    for i in range(6):  # a few small accounts so the pool has other rows
+        recs.append(_rec(f"203.0.113.{i}", 443, "https", _shodan={"module": "https", "options": {"hostname": f"www.small{i}.com"}},
+                         product="nginx", version="1.18.0",
+                         vulns={f"CVE-2021-{i:04d}": {"cvss": 5.0 + i, "epss": 0.2, "kev": False}}))
+    src = tmp_path / "big.jsonl.zst"
+    src.write_bytes(zstandard.ZstdCompressor().compress(b"".join(orjson.dumps(r) + b"\n" for r in recs)))
+    m = extract_mod.extract(src, tmp_path / "bout", workers=1)
+    feats = tmp_path / "bout" / "features" / m["input_sha256"]
+    art = tmp_path / "big.duckdb"
+    sc.score(feats, art)
+    return feats, art
+
+
+def test_worst_first_evidence_shows_the_kev_record_of_a_large_account(tmp_path, big_account):
+    feats, art = big_account
+    out = tmp_path / "pool"
+    labelpool.build(art, feats, out, k=3)
+    ev = {r["domain"]: r["evidence"] for r in csv.DictReader(open(out / "labels.csv"))}["bigco.com"]
+    lines = ev.splitlines()
+    assert "CVE-2021-41773" in lines[1] and "KEV" in lines[1]  # first record line, despite IP order
+    assert "198.51.100.99:443" in lines[1]
+    assert lines[-1] == "... 18 more records."  # 30 records, 12 shown
+
+
+def test_identical_lines_collapse_with_a_count():
+    rec = {"ip": "192.0.2.1", "port": 80, "module": "http", "product": "nginx", "version": "1.18.0",
+           "http_server": None, "has_ssl": False, "cert_expired": False, "cert_expires": None,
+           "timestamp": "2026-10-26T00:00:00", "ssl_versions": [], "vulns": []}
+    content, truncated = labelpool._evidence_content("Linked by: x\nA | b (x3)\nC")
+    assert content == {"A | b": 3, "C": 1} and not truncated
+    assert not labelpool.evidence_changed("Linked by: x\nC\nA | b\nA | b\nA | b", "Linked by: x\nA | b (x3)\nC")
+    assert labelpool.evidence_changed("Linked by: x\nC\n... 4 more records.", "Linked by: x\nC")
+    assert labelpool._record_line(rec) == "192.0.2.1:80 http | nginx 1.18.0"
+
+
+def test_rebuild_from_earlier_pool_keeps_unchanged_labels(tmp_path, big_account):
+    feats, art = big_account
+    run1 = tmp_path / "c2"
+    labelpool.build(art, feats, run1, k=3)
+    rows = list(csv.DictReader(open(run1 / "labels.csv")))
+    for r in rows:
+        r.update(real_org="yes", own_asset="yes", credible_opener="no", worth_a_call="no", notes="run1")
+    # Simulate run 1's old evidence: one row truncated, one row with its record lines in another order.
+    small = next(r for r in rows if r["domain"] != "bigco.com")
+    small["evidence"] = small["evidence"] + "\n... 2 more records."
+    reorder = next(r for r in rows if r["domain"] == "bigco.com")
+    head, *recs = reorder["evidence"].splitlines()
+    tail = recs[-1]
+    reorder["evidence"] = "\n".join([head, *reversed(recs[:-1]), tail])
+    with open(run1 / "labels.csv", "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    before = {p.name: p.read_bytes() for p in run1.iterdir()}
+
+    run2 = tmp_path / "c2v2"
+    meta = labelpool.build(art, feats, run2, k=3, from_dir=run1)
+    assert {p.name: p.read_bytes() for p in run1.iterdir()} == before  # run 1 is never written
+    new = {r["id"]: r for r in csv.DictReader(open(run2 / "labels.csv"))}
+    old = {r["id"]: r for r in rows}
+    assert set(new) == set(old)
+    assert json.loads((run2 / "key.json").read_text())["key"] == json.loads((run1 / "key.json").read_text())["key"]
+    small_id, big_id = small["id"], reorder["id"]
+    # bigco.com was truncated in run 1 too (30 records): its labels are reset for relabelling.
+    assert set(meta["rows_reset_for_relabelling"]) == {small_id, big_id}
+    assert new[small_id]["worth_a_call"] == "" and new[big_id]["worth_a_call"] == ""
+    kept = [i for i in new if i not in (small_id, big_id)]
+    assert kept and all(new[i]["worth_a_call"] == "no" and new[i]["notes"] == "run1" for i in kept)
+    manifest = json.loads((run2 / "pool_manifest.json").read_text())
+    assert manifest["rows_reset_for_relabelling"] == meta["rows_reset_for_relabelling"]
+    with pytest.raises(SystemExit):
+        labelpool.build(art, feats, run1, k=3, from_dir=run1)
+
+
+def test_strict_precision_needs_own_asset(tmp_path, big_account):
+    feats, art = big_account
+    out = tmp_path / "pool"
+    labelpool.build(art, feats, out, k=3)
+    rows = list(csv.DictReader(open(out / "labels.csv")))
+    for i, r in enumerate(rows):
+        r["worth_a_call"] = "yes"
+        r["own_asset"] = "yes" if i % 2 == 0 else "unknown"
+    with open(out / "labels.csv", "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    res = labelpool.evaluate(out)
+    key = json.loads((out / "key.json").read_text())["key"]
+    for lst, entry in res["lists"].items():
+        ids = [i for i, k in key.items() if k[f"rank_{lst}"] is not None]
+        own_yes = sum(1 for r in rows if r["id"] in ids and r["own_asset"] == "yes")
+        assert entry["precision"] == 1.0
+        assert entry["precision_worth_and_own_asset"] == round(own_yes / len(ids), 3)
+    rows[0]["own_asset"] = ""
+    with open(out / "labels.csv", "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    res = labelpool.evaluate(out)
+    assert any(e["precision_worth_and_own_asset"] is None for e in res["lists"].values())

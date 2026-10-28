@@ -555,3 +555,21 @@ One entry per decision: decision, options considered, why, date.
 - **Why**: The owner has OpenRouter / NVIDIA keys, not an Anthropic key. The Chat Completions shape
   covers both. A measurement needs every row and an honest cost, so partial runs must survive and
   the cost source must be explicit.
+
+## D59. C2 evidence v2 and a strict precision; run 1 kept (2026-10-28)
+- **Decision**: Keep C2 run 1 as measured (highest CVSS 1.00, ours 0.84, random 0.21). Evidence v2
+  orders an account's records worst-first by a fixed rule that does not use our weights (any KEV
+  CVE, then max CVSS, then a risky exposed service from the module list, then an expired cert, then
+  IP / port), collapses identical lines with a count, and keeps the 12-line cap and wording.
+  `build --from out/full/c2 --out out/full/c2v2` reuses run 1's pools, ids and order, copies run 1's
+  labels where the evidence differs only in order or collapsing, blanks the others (in practice the
+  rows that were truncated), lists them in `pool_manifest.json`, and never writes to run 1's folder.
+  `evaluate` also reports precision for worth_a_call AND own_asset (unknown own_asset is not yes)
+  when own_asset is filled, and human-vs-AI agreement per question.
+- **Options**: drop run 1; rebuild the pool from scratch; show all records; use our score to order
+  evidence.
+- **Why**: Run 1's evidence hid exposed services and KEV matches of large accounts behind the
+  12-line cap, which is a harness bias, not a ranking result. Ordering by our weights would leak our
+  ranking into the "neutral" evidence; a fixed severity rule does not. Reusing ids and labels keeps
+  the comparison paired and the relabelling small. Labels tracked "a CVE is visible", so own_asset
+  is needed to penalise weak links.

@@ -227,6 +227,23 @@ mail or VPN server whose IP is not what `acme.com` resolves to. Attribution labe
 until the owner's hand-check of the 30 misses (`misses.csv`) is in. Via-IP is the weakest link,
 as its Low label says.
 
+**C2 run 1 [M]** (`data-v1`, frozen config `765eef67e0c5`, pool `out/full/c2`, evidence v1, human
+rater, all 60 rows labelled, kept as recorded):
+
+| Ranking | precision@20 (worth_a_call) | Wilson 95% |
+|---|---|---|
+| Highest CVSS first | **1.00** | 0.83-1.00 |
+| Ours | **0.84** | 0.62-0.95 |
+| Random | 0.21 | 0.09-0.43 |
+
+Diagnosis by the owner after labelling (checked against `key.json`): (1) the v1 evidence showed the
+first 12 records ordered by IP and port. Our 4 no / unknown accounts have 34-1,488 IPs, and in all 4
+the scoring evidence (exposed RDP / MySQL / DNP3 plus KEV-matched software) fell outside the 12
+lines, so the sheet showed no CVE and no risky service; the highest-CVSS list is almost all 1-IP
+accounts, whose evidence always fits. A harness bias against large accounts. (2) Labels tracked
+"a CVE is visible" exactly; `own_asset` was left blank, so weak single-IP reverse-DNS links were not
+penalised. Run 1 stays on record; evidence v2 and a stricter precision follow (D59).
+
 **False exposures [M]** (sample artifact, config `765eef67e0c5`, found while checking the UI): the
 Shodan module names the probe that ran, not always the service that answered. Of 382
 exposed-service findings, ~13 (3.4%) carry a product of a different service: `rdp` answered by

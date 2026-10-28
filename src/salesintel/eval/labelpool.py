@@ -8,6 +8,7 @@ ai-label: a second rater (Claude) labels the same sheet into ai_labels.csv (D57)
 evaluate: precision@k per list from the human or AI sheet, plus human-vs-AI agreement.
 
     salesintel-labelpool build out/full/artifact.duckdb out/full/features/<sha256> --out out/full/c2
+    salesintel-labelpool build ... --out out/full/c2v2 --from out/full/c2   (evidence v2, D59)
     salesintel-labelpool ai-label out/full/c2
     salesintel-labelpool evaluate out/full/c2 [--rater human|ai]
 """
@@ -17,7 +18,9 @@ import csv
 import json
 import math
 import random
+import re
 import sys
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -25,7 +28,7 @@ import duckdb
 
 from salesintel.pipeline.atomic import code_commit, write_json
 from salesintel.pipeline.attribute import attribute
-from salesintel.pipeline.score import cert_state
+from salesintel.pipeline.score import cert_state, load_config
 
 SEED = 20261028
 LABEL_COLUMNS = ["real_org", "own_asset", "credible_opener", "worth_a_call", "notes"]
@@ -55,6 +58,35 @@ def _pools(con: duckdb.DuckDBPyConnection, k: int, seed: int) -> dict[str, list[
     return {"ours": ours, "cvss": cvss, "random": rnd}
 
 
+def _record_line(r: dict) -> str:
+    parts = [f"{r['ip']}:{r['port']} {r['module'] or ''}".strip()]
+    if r["product"]:
+        parts.append(" ".join(x for x in (r["product"], r["version"]) if x))
+    if r["http_server"]:
+        parts.append(f"server header '{r['http_server']}'")
+    state = cert_state(r, 30)
+    if state:
+        parts.append(f"cert {state}")
+    if r["ssl_versions"]:
+        parts.append("TLS " + "/".join(r["ssl_versions"]))
+    vulns = sorted(r["vulns"] or [], key=lambda v: (-(v["cvss"] or 0), v["cve"]))[:3]
+    if vulns:
+        parts.append("potential CVEs: " + "; ".join(
+            f"{v['cve']} CVSS {v['cvss']}" + (" KEV" if v["kev"] else "") +
+            (f" EPSS {v['epss']:.2f}" if v["epss"] is not None else "") +
+            (" (verified)" if v.get("verified") else "") for v in vulns))
+    return " | ".join(parts)
+
+
+def _worst_first(r: dict, risky: frozenset[str]) -> tuple:
+    """Fixed evidence order (D59), independent of scoring weights: any KEV CVE, then highest CVSS,
+    then a risky exposed service (remote admin / database / ICS module), then an expired cert,
+    then IP and port."""
+    vulns = r["vulns"] or []
+    return (not any(v["kev"] for v in vulns), -max((v["cvss"] or 0 for v in vulns), default=0),
+            r["module"] not in risky, cert_state(r, 30) != "expired", r["ip"], r["port"] or 0)
+
+
 def neutral_evidence(con: duckdb.DuckDBPyConnection, domain: str) -> str:
     rows = con.execute(
         """
@@ -72,44 +104,85 @@ def neutral_evidence(con: duckdb.DuckDBPyConnection, domain: str) -> str:
     edges = sorted({r["org"] or "a CDN" for r in recs if r["infra_class"] == "cdn"})
     if edges:
         lines.append(f"Served through CDN / WAF: {', '.join(edges)}.")
-    for r in [r for r in recs if r["infra_class"] != "cdn"][:MAX_EVIDENCE_LINES]:
-        parts = [f"{r['ip']}:{r['port']} {r['module'] or ''}".strip()]
-        if r["product"]:
-            parts.append(" ".join(x for x in (r["product"], r["version"]) if x))
-        if r["http_server"]:
-            parts.append(f"server header '{r['http_server']}'")
-        state = cert_state(r, 30)
-        if state:
-            parts.append(f"cert {state}")
-        if r["ssl_versions"]:
-            parts.append("TLS " + "/".join(r["ssl_versions"]))
-        vulns = sorted(r["vulns"] or [], key=lambda v: (-(v["cvss"] or 0), v["cve"]))[:3]
-        if vulns:
-            parts.append("potential CVEs: " + "; ".join(
-                f"{v['cve']} CVSS {v['cvss']}" + (" KEV" if v["kev"] else "") +
-                (f" EPSS {v['epss']:.2f}" if v["epss"] is not None else "") for v in vulns))
-        lines.append(" | ".join(parts))
-    hidden = len([r for r in recs if r["infra_class"] != "cdn"]) - MAX_EVIDENCE_LINES
+    risky = frozenset(load_config().raw["exposure_modules"])  # the module list, not the weights
+    own = sorted((r for r in recs if r["infra_class"] != "cdn"), key=lambda r: _worst_first(r, risky))
+    counts: dict[str, int] = {}
+    for r in own:  # collapse identical lines, keeping worst-first order
+        line = _record_line(r)
+        counts[line] = counts.get(line, 0) + 1
+    shown = list(counts.items())[:MAX_EVIDENCE_LINES]
+    lines += [f"{line} (x{n})" if n > 1 else line for line, n in shown]
+    hidden = len(own) - sum(n for _, n in shown)
     if hidden > 0:
         lines.append(f"... {hidden} more records.")
     return "\n".join(lines)
 
 
-def build(artifact: Path, features: Path, out: Path, k: int = 20, seed: int = SEED) -> dict:
+def _evidence_content(evidence: str) -> tuple[Counter, bool]:
+    """Record lines as a multiset (order-free, counts expanded) and whether it was truncated."""
+    lines, truncated = Counter(), False
+    for line in evidence.splitlines():
+        if line.startswith(("Linked by:", "Served through CDN")):
+            continue
+        if line.startswith("... ") and line.endswith(" more records."):
+            truncated = True
+            continue
+        m = re.fullmatch(r"(.*) \(x(\d+)\)", line)
+        lines[m.group(1) if m else line] += int(m.group(2)) if m else 1
+    return lines, truncated
+
+
+def evidence_changed(old: str, new: str) -> bool:
+    """True if the evidence differs beyond ordering / collapsing (then the row is relabelled)."""
+    (a, ta), (b, tb) = _evidence_content(old), _evidence_content(new)
+    return ta or tb or a != b
+
+
+def build(artifact: Path, features: Path, out: Path, k: int = 20, seed: int = SEED,
+          from_dir: Path | None = None) -> dict:
     con = duckdb.connect()
     con.execute("SET enable_progress_bar = false")
     con.execute(f"ATTACH '{artifact}' AS a (READ_ONLY)")
     attribute(con, features)
-    pools = _pools(con, k, seed)
-    pooled = sorted({d for p in pools.values() for d in p})
-    random.Random(seed + 1).shuffle(pooled)
-
-    manifest = dict(con.execute("SELECT key, value FROM a.manifest").fetchall())
-    acc = {d: (s, t) for d, s, t in con.execute("SELECT domain, score, tier FROM a.accounts").fetchall()}
     out.mkdir(parents=True, exist_ok=True)
     sheet = out / "labels.csv"
     if sheet.exists():
         raise SystemExit(f"{sheet} exists; refusing to overwrite labels")
+    manifest = dict(con.execute("SELECT key, value FROM a.manifest").fetchall())
+
+    if from_dir is not None:
+        # Re-run of an earlier pool (D59): same pools, ids and order; earlier labels kept where the
+        # evidence did not change. The earlier folder is only read.
+        if from_dir.resolve() == out.resolve():
+            raise SystemExit("--from must differ from --out")
+        prev_key = json.loads((from_dir / "key.json").read_text())
+        with open(from_dir / "labels.csv", newline="") as fh:
+            prev = {r["id"]: r for r in csv.DictReader(fh)}
+        ids = sorted(prev_key["key"])
+        reset, kept = [], []
+        with open(sheet, "w", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["id", "domain", "evidence", *LABEL_COLUMNS])
+            for lid in ids:
+                d = prev_key["key"][lid]["domain"]
+                ev = neutral_evidence(con, d)
+                if evidence_changed(prev[lid]["evidence"], ev):
+                    reset.append(lid)
+                    w.writerow([lid, d, ev, *([""] * len(LABEL_COLUMNS))])
+                else:
+                    kept.append(lid)
+                    w.writerow([lid, d, ev, *(prev[lid].get(c, "") for c in LABEL_COLUMNS)])
+        meta = {**prev_key["meta"], "kind": "c2_label_pool", "evidence_version": 2, "from": str(from_dir),
+                "rows_reset_for_relabelling": reset, "rows_labels_copied": len(kept),
+                "code_commit": code_commit(), "created_at": datetime.now(UTC).isoformat(timespec="seconds")}
+        write_json(out / "key.json", {"meta": meta, "key": prev_key["key"]})
+        write_json(out / "pool_manifest.json", {k: v for k, v in meta.items()})
+        return meta
+
+    pools = _pools(con, k, seed)
+    pooled = sorted({d for p in pools.values() for d in p})
+    random.Random(seed + 1).shuffle(pooled)
+    acc = {d: (s, t) for d, s, t in con.execute("SELECT domain, score, tier FROM a.accounts").fetchall()}
     key = {}
     with open(sheet, "w", newline="") as fh:
         w = csv.writer(fh)
@@ -120,7 +193,7 @@ def build(artifact: Path, features: Path, out: Path, k: int = 20, seed: int = SE
             key[lid] = {"domain": d, "score": acc[d][0], "tier": acc[d][1],
                         **{f"rank_{n}": (p.index(d) + 1 if d in p else None) for n, p in pools.items()}}
     meta = {
-        "kind": "c2_label_pool", "k": k, "seed": seed, "pooled": len(pooled),
+        "kind": "c2_label_pool", "evidence_version": 2, "k": k, "seed": seed, "pooled": len(pooled),
         "list_sizes": {n: len(p) for n, p in pools.items()},
         "overlap_ours_cvss": len(set(pools["ours"]) & set(pools["cvss"])),
         "scoring_config_version": manifest.get("scoring_config_version"),
@@ -168,22 +241,34 @@ def cohen_kappa(a: list[str], b: list[str]) -> float | None:
     return 1.0 if pe == 1 else (po - pe) / (1 - pe)
 
 
-def agreement(out: Path) -> dict | None:
-    """Human vs AI on worth_a_call, over the rows the human has labelled (partial sheet allowed)."""
-    if not (out / SHEETS["ai"]).exists():
-        return None
-    human, ai = _read_sheet(out, "human"), _read_sheet(out, "ai")
-    pairs = [(_norm(h["worth_a_call"]), _norm(ai[i]["worth_a_call"])) for i, h in human.items()
-             if _norm(h["worth_a_call"]) is not None and i in ai]
+QUESTIONS = ("worth_a_call", "own_asset", "real_org", "credible_opener")
+
+
+def _agree(human: dict, ai: dict, q: str) -> dict:
+    pairs = [(_norm(h[q]), _norm(ai[i][q])) for i, h in human.items() if _norm(h.get(q, "")) is not None and i in ai]
     a, b = [x for x, _ in pairs], [y for _, y in pairs]
     k = cohen_kappa(a, b)
     return {
-        "question": "worth_a_call", "rows_compared": len(pairs), "rows_in_pool": len(human),
+        "rows_compared": len(pairs),
         "percent_agreement": round(sum(x == y for x, y in pairs) / len(pairs), 3) if pairs else None,
         "cohen_kappa": round(k, 3) if k is not None else None,
         "confusion_human_by_ai": {h: {c: sum(1 for x, y in pairs if x == h and y == c) for c in CATEGORIES}
                                   for h in CATEGORIES},
     }
+
+
+def agreement(out: Path) -> dict | None:
+    """Human vs AI per question, over the rows the human answered (partial sheet allowed)."""
+    if not (out / SHEETS["ai"]).exists():
+        return None
+    human, ai = _read_sheet(out, "human"), _read_sheet(out, "ai")
+    per_q = {q: _agree(human, ai, q) for q in QUESTIONS}
+    # Top-level keys keep the worth_a_call figures (the headline question).
+    return {"question": "worth_a_call", "rows_in_pool": len(human), **per_q["worth_a_call"], "per_question": per_q}
+
+
+def _precision(vals: list[str | None]) -> tuple[int, int]:
+    return vals.count("yes"), vals.count("no")
 
 
 def evaluate(out: Path, rater: str = "human") -> dict:
@@ -199,14 +284,26 @@ def evaluate(out: Path, rater: str = "human") -> dict:
     for lst in ("ours", "cvss", "random"):
         ids = [i for i, k in key["key"].items() if k[f"rank_{lst}"] is not None]
         vals = [_norm(labels[i]["worth_a_call"]) for i in ids]
-        yes, no = vals.count("yes"), vals.count("no")
+        yes, no = _precision(vals)
         lo, hi = wilson(yes, yes + no)
         sub = {q: sum(_norm(labels[i][q]) == "yes" for i in ids) for q in ("real_org", "own_asset", "credible_opener")}
-        result["lists"][lst] = {
+        entry = {
             "accounts": len(ids), "yes": yes, "no": no, "unknown": vals.count("unknown"),
             "precision": round(yes / (yes + no), 3) if yes + no else None,
             "wilson95": [round(lo, 3), round(hi, 3)], "sub_questions_yes": sub,
         }
+        # Stricter hit (D59): worth a call AND evidence on their own asset. Unknown own_asset is not
+        # yes. Reported only when own_asset is filled for every account in the list.
+        own = [_norm(labels[i]["own_asset"]) for i in ids]
+        if all(o is not None for o in own):
+            both = sum(v == "yes" and o == "yes" for v, o in zip(vals, own))
+            lo2, hi2 = wilson(both, yes + no)
+            entry["precision_worth_and_own_asset"] = round(both / (yes + no), 3) if yes + no else None
+            entry["wilson95_worth_and_own_asset"] = [round(lo2, 3), round(hi2, 3)]
+        else:
+            entry["precision_worth_and_own_asset"] = None
+            entry["note"] = "own_asset not filled for every account; strict precision not computed"
+        result["lists"][lst] = entry
     write_json(out / f"c2_result_{rater}.json", result)
     return result
 
@@ -219,6 +316,8 @@ def main(argv: list[str] | None = None) -> None:
     b.add_argument("features", type=Path)
     b.add_argument("--out", type=Path, required=True)
     b.add_argument("--k", type=int, default=20)
+    b.add_argument("--from", dest="from_dir", type=Path,
+                   help="earlier pool folder: same pools and ids; labels copied where evidence is unchanged")
     e = sub.add_parser("evaluate")
     e.add_argument("out", type=Path)
     e.add_argument("--rater", choices=sorted(SHEETS), default="human")
@@ -232,7 +331,7 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--force", action="store_true", help="overwrite ai_labels.csv")
     args = ap.parse_args(argv)
     if args.cmd == "build":
-        res = build(args.artifact, args.features, args.out, args.k)
+        res = build(args.artifact, args.features, args.out, args.k, from_dir=args.from_dir)
     elif args.cmd == "evaluate":
         res = evaluate(args.out, args.rater)
     else:

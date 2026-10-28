@@ -144,6 +144,14 @@ The feature layer keeps these fields per filtered record (no `http.html`, no raw
 
 Cut: C3 (KEV lift), the LLM labeller (D28) and the most-CVEs baseline (D37).
 
+**Evidence v2 (D59).** Run 1 showed that evidence ordered by IP hid the decisive records of large
+accounts. The sheet now orders records worst-first by a fixed rule independent of our weights (any
+KEV CVE, highest CVSS, risky exposed service from the module list, expired cert, then IP / port),
+collapses identical lines with a count, and keeps the 12-line cap and "potential" / "verified"
+wording. `build --from <run 1>` keeps run 1's pools, ids and order, copies labels where the
+evidence is unchanged up to ordering, and blanks the rest for relabelling. `evaluate` adds a strict
+precision (worth_a_call AND own_asset = yes) and human-vs-AI agreement per question.
+
 ## 5. LLM use
 **One use, in evaluation only (D57): an AI second rater for C2.** `salesintel-labelpool ai-label`
 sends each pooled account's neutral evidence (from `labels.csv`, never `key.json`) to the latest
