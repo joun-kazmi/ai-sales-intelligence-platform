@@ -9,7 +9,7 @@ evidence for every point of every score.
   free host sleeps when idle: the first request after a pause downloads the artifact again and
   can take a minute.
 - **Brief:** `docs/ASSIGNMENT.md`. Design: `docs/design/`. Every decision with its options and
-  reasons: `docs/DECISIONS.md` (D1-D62). Every measured figure: `docs/DATA_NOTES.md` (section 5c).
+  reasons: `docs/DECISIONS.md` (D1-D64). Every measured figure: `docs/DATA_NOTES.md` (section 5c).
 - Claims are marked **[M]** measured or **[H]** hypothesis, as in the docs.
 
 ![Ranked list (synthetic demo data)](docs/screenshots/ranked-list.png)
@@ -350,4 +350,4 @@ APP_USERNAME=demo APP_PASSWORD=demo ARTIFACT_PATH=out/full/artifact.duckdb \
 `uv run python scripts/demo_artifact.py` builds the synthetic artifact used for the screenshots.
 Deployment: `render.yaml` and `Dockerfile`; on Render the app downloads the artifact named by
 `ARTIFACT_REPO` / `ARTIFACT_TAG` / `ARTIFACT_NAME` with a read-only `GITHUB_TOKEN` (currently
-`data-v3`).
+`data-v3` in a separate private repo, so this repo can be public without the scored list, D64).

@@ -643,3 +643,15 @@ One entry per decision: decision, options considered, why, date.
 - **Not fixing**: the `exposure_guard` "apache" substring, 0 affected exposure records in the full
   data [M]; extract batches bounded by record count rather than bytes, theoretical, the full run
   peaked at ~0.5 GB [M].
+
+## D64. Public repo, private data releases (2026-10-29)
+- **Decision**: Make this repo public for review (Firmable agreed to a public repo for a week). The
+  `data-v1` / `data-v2` / `data-v3` releases move to a separate private repo (`salesintel-data`,
+  sha256 of each asset checked after the copy) and are deleted here; Render's `ARTIFACT_REPO`
+  points there and the read-only token covers only that repo. Code, docs and history are unchanged.
+- **Options**: keep the repo private and invite reviewers (no GitHub usernames available); make it
+  public with the releases; a second, code-only public repo.
+- **Why**: The artifact lists real organisations' exposures (NFR5, D20); a public release would
+  hand it out without the app's basic auth. Moving it keeps one repo and needs no code change.
+- **Result** [M]: Render redeployed on the new repo and started cleanly (startup downloads the
+  artifact); the public release download URL returns 404.

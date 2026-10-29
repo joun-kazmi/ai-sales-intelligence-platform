@@ -58,8 +58,9 @@ flowchart LR
 - Basic auth on every route; credentials in Render env vars, given only in the submission note
   (D12). `X-Robots-Tag: noindex` on every response. All record-derived text escaped (NFR5).
 - **Artifact delivery (D20).** The artifact is never in git. It is an asset on a private GitHub
-  Release of this (private) repo. At startup the app downloads it with a fine-grained, read-only
-  token for this repo only, kept in Render env vars. Render's free disk is ephemeral, so every
+  Release of a separate private data repo (D64; it was this repo's own releases while this repo was
+  private). At startup the app downloads it with a fine-grained, read-only token for that repo
+  only, kept in Render env vars. Render's free disk is ephemeral, so every
   cold start re-downloads it; the README says so.
 - **Releases** [M]: `data-v1` (config `765eef67e0c5`, the ranking C2 measured), `data-v2`
   (config `6bacfc84480b`, D55, 45,887,488 bytes, sha256 checked after download) and `data-v3`
