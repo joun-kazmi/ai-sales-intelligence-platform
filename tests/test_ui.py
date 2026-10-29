@@ -35,6 +35,8 @@ def artifact(tmp_path_factory):
                      product="<script>alert(1)</script>", version="1", tags=["eol-product"],
                      http={"title": "<img src=x onerror=alert(2)>", "server": "<b>bold</b>/1.0"}))
     recs.append(_rec("198.51.100.251", 443, "https", hostnames=["fw.acme-fw.com"], product="FortiGate"))
+    recs.append(_rec("198.51.100.252", 443, "https", _shodan={"module": "https", "options": {"hostname": "www.oldos.com"}},
+                     tags=["eol-os"]))  # end-of-life OS only, no end-of-life product
     src = tmp / "in.jsonl.zst"
     src.write_bytes(zstandard.ZstdCompressor().compress(b"".join(orjson.dumps(r) + b"\n" for r in recs)))
     m = extract_mod.extract(src, tmp / "out", workers=1)
@@ -105,6 +107,11 @@ def test_play_counts_match_their_lists(client):
     assert "14 accounts" in exposed  # 70 orgs, every 5th has RDP
     appliances = client.get("/?play=appliances", auth=AUTH).text
     assert "acme-fw.com" in appliances  # unranked accounts still appear in their play
+
+
+def test_eol_play_includes_end_of_life_os(client):
+    eol = client.get("/export.csv?play=eol&tier=all&eligibility=all", auth=AUTH).text
+    assert "oldos.com" in eol and "org00.com" in eol  # D63: eol_os findings count, as do EOL products
 
 
 def test_app_connection_is_capped_for_the_free_tier(client):

@@ -58,6 +58,11 @@ fox = "Niagara Fox (building automation)"
 [exposure_guard]
 other_service_product = "\\b(openssh|dropbear|ssh|proftpd|vsftpd|pure-ftpd|filezilla|ftp|nginx|apache|iis|lighttpd|openresty|squid|ncat|caddy|envoy|tomcat|jetty)\\b|http|proxy"
 
+# D63 (scorer rules, recorded here so the config version changes with them): a software finding
+# cites a record that carries its awarded CVE (or the end-of-life tag); the attribution label comes
+# from the records behind point-bearing findings; via-IP is blocked on any IP with a CDN / cloud
+# record.
+
 [neglect]
 deprecated_tls = ["SSLv2", "SSLv3", "TLSv1", "TLSv1.1"]
 

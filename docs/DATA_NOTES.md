@@ -362,6 +362,16 @@ App on `artifact-v2` locally (`ARTIFACT_PATH`): `/` 38 ms, `/plays` 156 ms, CSV 
 matches the local artifact. Render's `ARTIFACT_TAG` switched to `data-v2` and redeployed; the live
 default view shows Tier 1 = 964 (v1: 982). `data-v1` stays as the release the C2 evaluation measured.
 
+**Review fixes D63 [M]** (owner's measurements on `data-v2`): 109 software findings cited a CVE
+absent at the cited ip:port (62 of them KEV); the EOL play missed 449 default-eligible ranked
+accounts whose evidence is an end-of-life OS; 260 ranked accounts were labelled High while every
+point came from via-IP links (1 in Tier 1, 8 in Tier 2), and no ranked account was ever Low; 6
+findings on 4 accounts were via-IP on IPs with cloud records. Effect of the fix on the
+domain-complete sample (sandbox, config `bcc796098f9c` vs `6bacfc84480b`): scores, tiers and
+finding counts identical (37,831 accounts, 42,002 findings); 7 software findings now cite another
+record; ranked labels High 10,662 -> 10,556, Medium 4,037 -> 4,134, Low 0 -> 9. Full-file rescore
+(`data-v3`) to follow.
+
 **UI on the full artifact [M]** (`data-v1`, owner's machine): page times 15-179 ms (slowest
 `/plays`, which counts five plays); CSV export of the default view 169,285 rows / 34 MB / 2.0 s,
 everything 44 MB / 3.0 s; server RSS 325 MB after the exports, before the 256 MiB DuckDB cap (D56).

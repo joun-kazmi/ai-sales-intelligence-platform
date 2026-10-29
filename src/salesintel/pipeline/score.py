@@ -28,7 +28,7 @@ from salesintel.pipeline.attribute import attribute
 HERE = Path(__file__).parent
 SCORING_TOML = HERE / "scoring.toml"
 UBIQUITOUS_TXT = HERE / "ubiquitous_cves.txt"
-SCORER_VERSION = "1"
+SCORER_VERSION = "2"  # D63
 
 LABEL = {"scan_hostname": "High", "cert_cn": "High", "http_host": "Medium", "ptr": "Medium", None: "Low"}
 LABEL_RANK = {"High": 3, "Medium": 2, "Low": 1}
@@ -241,7 +241,11 @@ def account_findings(domain: str, records: list[dict], cfg: Config) -> list[Find
         vulns = {v["cve"]: v for r in recs for v in r["vulns"]}.values()
         pts, how, cves = software_award(list(vulns), verified, cfg)
         eol = any("eol-product" in r["tags"] for r in recs)
-        r0 = recs[0]
+        # Cite a record that carries the awarded evidence, not just the group's first record (D63).
+        if cves:
+            r0 = next(r for r in recs if any(v["cve"] == cves[0]["cve"] for v in r["vulns"]))
+        else:
+            r0 = next((r for r in recs if "eol-product" in r["tags"]), recs[0])
         name = " ".join(x for x in (product, version) if x) or "Unidentified software"
         parts = []
         if how:
@@ -268,6 +272,13 @@ def account_findings(domain: str, records: list[dict], cfg: Config) -> list[Find
             f.points = min(f.points, max(budget, 0))
             budget -= f.points
     return out
+
+
+def attribution_label(fs: list[Finding], recs: list[dict]) -> str:
+    """Strongest link among the records behind point-bearing findings; all records if none (D63)."""
+    scored = [f.source for f in fs if f.points > 0]
+    sources = scored or [r["source"] for r in recs if r["attribution"] != "unresolved"]
+    return max((LABEL[s] for s in sources), key=LABEL_RANK.get)
 
 
 def _cert_iso(r: dict) -> str | None:
@@ -380,7 +391,7 @@ def score(features: Path, out: Path, cfg: Config | None = None, memory_limit: st
         fs = account_findings(domain, recs, cfg)
         total = sum(f.points for f in fs)
         scored = [f for f in fs if f.points > 0]
-        label = max((LABEL[r["source"]] for r in recs if r["attribution"] != "unresolved"), key=LABEL_RANK.get)
+        label = attribution_label(fs, recs)
         elig, why = eligibility(domain, recs, cfg)
         accounts.append({
             "domain": domain,

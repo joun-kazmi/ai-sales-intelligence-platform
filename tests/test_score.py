@@ -7,7 +7,7 @@ from salesintel.pipeline import extract as extract_mod
 from salesintel.pipeline import score as sc
 
 CFG = sc.load_config()
-FROZEN = "6bacfc84480b"  # D55 (was 765eef67e0c5, D50)
+FROZEN = "bcc796098f9c"  # D63 (was 6bacfc84480b, D55; 765eef67e0c5, D50)
 TS = "2026-10-26T10:00:00.000000"
 
 
@@ -245,3 +245,46 @@ def test_count_false_exposures_script(tmp_path):
     assert res["lists"]["ours"] == {"accounts": 2, "with_false_exposure": 2, "lose_exposure_points": 1,
                                     "awarded_exposure_was_false": 2}
     assert res["lists"]["cvss"]["with_false_exposure"] == 0
+
+
+# ---------- D63: evidence and labels come from the records that earned the points
+
+def test_software_finding_cites_the_record_with_the_cve():
+    rows = [row(product="nginx", version="1.18.0", ip="203.0.113.1", port=80, module="http", tags=["eol-product"]),
+            row(product="nginx", version="1.18.0", ip="203.0.113.2", port=8443, module="https",
+                vulns=[vuln("CVE-2021-1001", kev=True)])]
+    sw = next(f for f in total(rows)[1] if f.kind == "software")
+    assert (sw.ip, sw.port, sw.module) == ("203.0.113.2", 8443, "https") and "203.0.113.2" in sw.sentence
+
+
+def test_eol_only_software_finding_cites_the_eol_record():
+    rows = [row(product="nginx", version="1.18.0", ip="203.0.113.1", vulns=[vuln("CVE-2021-1009", epss=0.01)]),
+            row(product="nginx", version="1.18.0", ip="203.0.113.2", tags=["eol-product"])]
+    sw = next(f for f in total(rows)[1] if f.kind == "software")
+    assert sw.ip == "203.0.113.2" and sw.points == 15
+
+
+def test_attribution_label_from_point_bearing_records():
+    rows = [row(source="scan_hostname", ip="203.0.113.1"),  # High link, no points
+            row(attribution="via_ip", source=None, ip="203.0.113.2", module="rdp", port=3389)]
+    fs = total(rows)[1]
+    assert sc.attribution_label(fs, rows) == "Low"
+    assert sc.attribution_label(sc.account_findings("acme.com", rows[:1], CFG), rows[:1]) == "High"  # no points
+
+
+def test_no_via_ip_on_an_ip_with_cloud_records(tmp_path):
+    recs = [  # one IP, mixed metadata: the named record is cloud-tagged, the nameless one is not
+        {"ip_str": "198.51.100.9", "port": 443, "timestamp": TS, "org": "Example Corp", "cloud": {"provider": "Amazon"},
+         "_shodan": {"module": "https", "options": {"hostname": "www.mixed.com"}}},
+        {"ip_str": "198.51.100.9", "port": 3389, "timestamp": TS, "org": "Example Corp", "_shodan": {"module": "rdp"}},
+        {"ip_str": "198.51.100.10", "port": 443, "timestamp": TS, "org": "Example Corp",
+         "_shodan": {"module": "https", "options": {"hostname": "www.plain.com"}}},
+        {"ip_str": "198.51.100.10", "port": 3389, "timestamp": TS, "org": "Example Corp", "_shodan": {"module": "rdp"}},
+    ]
+    src = tmp_path / "in.jsonl.zst"
+    src.write_bytes(zstandard.ZstdCompressor().compress(b"".join(orjson.dumps(r) + b"\n" for r in recs)))
+    m = extract_mod.extract(src, tmp_path / "out", workers=1)
+    con = duckdb.connect()
+    sc.attribute(con, tmp_path / "out" / "features" / m["input_sha256"])
+    got = dict(con.execute("SELECT ip, attribution FROM attributed WHERE port = 3389").fetchall())
+    assert got == {"198.51.100.9": "unresolved", "198.51.100.10": "via_ip"}

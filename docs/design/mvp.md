@@ -48,7 +48,7 @@ finding, the human eval (C2), the hosted list, the write-up.
 
 **Weights frozen** 2026-10-28 at scoring config `765eef67e0c5` (D50) for the C2 evaluation
 (`data-v1`). After C2, the evidence-correctness fix D55 gives config `6bacfc84480b` for `data-v2`;
-weights are unchanged.
+the review fixes D63 give `bcc796098f9c` for `data-v3`. Weights are unchanged.
 
 **UI spec:** `docs/design/ui.md` (Thursday build).
 

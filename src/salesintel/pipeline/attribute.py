@@ -29,9 +29,12 @@ def attribute(con: duckdb.DuckDBPyConnection, features: Path) -> None:
         ), local AS (
             SELECT ip, count(*) AS local_n, min(domain) AS only_domain FROM pairs GROUP BY ip
         ), carried AS (
-            SELECT ip, max(sample_ip_domain_count) AS carried_n FROM feat GROUP BY ip
+            SELECT ip, max(sample_ip_domain_count) AS carried_n,
+                   bool_or(infra_class IS NOT NULL) AS infra_ip  -- any record on the IP is CDN / cloud (D63)
+            FROM feat GROUP BY ip
         )
-        SELECT l.ip, l.only_domain, greatest(l.local_n, coalesce(c.carried_n, 0)) AS ip_domain_count
+        SELECT l.ip, l.only_domain, greatest(l.local_n, coalesce(c.carried_n, 0)) AS ip_domain_count,
+               coalesce(c.infra_ip, false) AS infra_ip
         FROM local l LEFT JOIN carried c USING (ip)
         """
     )
@@ -41,11 +44,11 @@ def attribute(con: duckdb.DuckDBPyConnection, features: Path) -> None:
         SELECT f.*,
             CASE
                 WHEN len(f.names) > 0 THEN f.names[1].domain
-                WHEN f.infra_class IS NULL AND d.ip_domain_count = 1 THEN d.only_domain
+                WHEN f.infra_class IS NULL AND NOT d.infra_ip AND d.ip_domain_count = 1 THEN d.only_domain
             END AS domain,
             CASE
                 WHEN len(f.names) > 0 THEN 'direct'
-                WHEN f.infra_class IS NULL AND d.ip_domain_count = 1 THEN 'via_ip'
+                WHEN f.infra_class IS NULL AND NOT d.infra_ip AND d.ip_domain_count = 1 THEN 'via_ip'
                 ELSE 'unresolved'
             END AS attribution,
             CASE WHEN len(f.names) > 0 THEN f.names[1].source END AS source,

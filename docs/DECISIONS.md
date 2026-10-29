@@ -614,3 +614,28 @@ One entry per decision: decision, options considered, why, date.
   / 290 tokens (ultra) and 1.8 s / 159 tokens (lightning); `/no_think` was slower on ultra and ran
   lightning to the 4000-token cap (invalid:length); gpt-oss-20b at low effort took 90.6 s. Thinking
   is a rater setting, so it is logged with the run.
+
+## D63. Review fixes: evidence record, EOL-OS play, label from scoring records, IP-level via-IP block (2026-10-29)
+- **Decision**: Four fixes from two external reviews, verified and measured on `data-v2` by the
+  owner. (1) A software finding cites a record that carries its awarded CVE (the first listed), or
+  the `eol-product` tag when the award is end-of-life only, instead of the product group's first
+  record. (2) The end-of-life play also includes `eol_os` findings (app only). (3) The attribution
+  label is the strongest link among the records behind point-bearing findings, falling back to all
+  records when the account has no points. (4) Via-IP is blocked on any IP where some record has an
+  infrastructure class, not only when the nameless record itself has one. Scorer version 1 -> 2;
+  scoring config `6bacfc84480b` -> `bcc796098f9c` (the rules are recorded as a comment in
+  `scoring.toml`, so the config version changes with them; weights unchanged). The owner rescores
+  and publishes `data-v3`. README wording: C2 tables say "known-only precision" and run 2 adds
+  fixed-denominator figures; evidence v2 reduces the truncation bias but does not remove it (C2 not
+  rebuilt); the C1 via-IP rate likely understates via-IP accuracy (checked against the registrable
+  domain, not the linking hostname).
+- **Options**: leave the evidence as is and state it; fix only the evidence bug; rebuild C2 with a
+  new evidence order.
+- **Why**: Measured on `data-v2` (owner): 109 software findings cited a CVE absent at the cited
+  ip:port (62 KEV); 449 default-eligible ranked accounts were missing from the EOL play; 260 ranked
+  accounts showed High while every point came from via-IP (no ranked account was ever Low); 6
+  findings / 4 accounts got via-IP on an IP with cloud records, against the stated rule. Evidence
+  must be true (D6). C2 stays as measured on the frozen ranking.
+- **Not fixing**: the `exposure_guard` "apache" substring, 0 affected exposure records in the full
+  data [M]; extract batches bounded by record count rather than bytes, theoretical, the full run
+  peaked at ~0.5 GB [M].

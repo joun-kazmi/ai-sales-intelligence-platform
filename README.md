@@ -70,7 +70,8 @@ flowchart LR
    section, D44): **direct** when the record names it (scan hostname > non-wildcard cert CN >
    `http.host` > named PTR, shown as a High / Medium confidence label), **via-IP** (Low) when a
    nameless record (an RDP or database banner, say) sits on a customer IP with exactly one domain.
-   Cloud / hosting IPs never get via-IP links: they are shared and re-assigned (D23, D24).
+   Cloud / hosting IPs never get via-IP links, nor does any IP with a CDN or cloud record: they are
+   shared and re-assigned (D23, D24, D63).
 3. **Score** with transparent additive points per finding (D25, `scoring.toml`):
 
    | Family | Finding | Points |
@@ -135,7 +136,9 @@ A match supports a link; it does not prove ownership (D39). Full file [M]:
 | certificate CN | High | 0.417 |
 | via-IP | Low | 0.173 |
 
-Via-IP is the weakest link, as its Low label says. **Open question:** certificate-CN links are
+Via-IP is the weakest link, as its Low label says, but its rate likely understates it: a via-IP
+link is checked against the registrable domain, not the hostname that established the domain on
+that IP (`dnscheck.py`), and a bare domain often resolves to a web host elsewhere. **Open question:** certificate-CN links are
 labelled High but match DNS less often than both Medium sources. Hypothesis [H]: the certificate
 names the bare domain while the host is a mail or VPN server on another IP. The labels stay until
 the hand-check of the misses is done.
@@ -153,7 +156,7 @@ evidence? (`worth_a_call`). Our top 20 and the highest-CVSS top 20 share **no** 
 
 **Run 1, human rater, evidence v1** [M]:
 
-| Ranking | precision@20 | Wilson 95% |
+| Ranking | known-only precision@20 | Wilson 95% |
 |---|---|---|
 | Highest CVSS first | 1.00 | 0.83-1.00 |
 | Ours | 0.84 | 0.62-0.95 |
@@ -164,17 +167,23 @@ IP. Our 4 no / unknown accounts have 34-1,488 IPs, and in all 4 the records that
 (exposed RDP / MySQL / DNP3 plus known-exploited software) fell outside those 12 lines, so the
 rater saw no CVE and no risky service. The highest-CVSS list is almost all single-IP accounts,
 whose evidence always fits. A harness bias against large accounts. Run 1 stays on record as
-measured; the sheet was fixed (evidence v2, worst-first by a rule independent of our weights, D59).
+measured; the sheet was changed (evidence v2, worst-first by a rule independent of our weights,
+D59). That **reduces the bias but does not remove it**: v2 still sorts known-exploited CVE records
+before CVE-free risky exposures and does not show end-of-life tags, so on an account with more
+than 12 records an exposed RDP can still fall below the cut. C2 was not rebuilt for this.
 
 **Run 2, AI rater, evidence v2** [M]. Human labelling stopped after 45 of 60 rows (D60, a time cut),
 so run 2 is an LLM rater on all 60 rows (NVIDIA `nemotron-3-ultra-550b-a55b`, thinking off,
 temperature 0, structured output), checked against the human labels:
 
-| Ranking | precision@20 (AI rater) | Wilson 95% |
-|---|---|---|
-| Highest CVSS first | 0.800 | 0.584-0.919 |
-| Ours | 0.789 | 0.567-0.915 |
-| Random | 0.105 | 0.029-0.314 |
+| Ranking | known-only precision@20 (AI rater) | Wilson 95% | yes / no / unknown | fixed denominator (yes / 20) |
+|---|---|---|---|---|
+| Highest CVSS first | 0.800 | 0.584-0.919 | 16 / 4 / 0 | 16/20 = 0.80 |
+| Ours | 0.789 | 0.567-0.915 | 15 / 4 / 1 | 15/20 = 0.75 |
+| Random | 0.105 | 0.029-0.314 | 2 / 17 / 1 | 2/20 = 0.10 |
+
+"Known-only" leaves "unknown" answers out of the denominator (as in run 1); the last column counts
+them as not worth a call.
 
 Human vs AI on `worth_a_call` over the 45 human-labelled rows: **75.6% agreement, Cohen's kappa
 0.551** (moderate). The AI is stricter: it never said yes where the human said no, and turned 7

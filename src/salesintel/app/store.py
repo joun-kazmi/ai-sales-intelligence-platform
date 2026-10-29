@@ -23,9 +23,11 @@ PLAYS = {
     "exploited": ("Potential known-exploited CVEs",
                   "Vulnerability management / security operations lead",
                   """domain IN (SELECT domain FROM findings WHERE kind = 'software' AND cves LIKE '%"kev":true%')"""),
-    # Known MVP shortcut: the artifact has no separate EOL flag, so match the sentence (ui.md).
+    # Known MVP shortcut: the artifact has no separate EOL flag for products, so match the sentence
+    # (ui.md); an end-of-life OS is its own finding kind (D63).
     "eol": ("End-of-life software", "IT operations manager (upgrade and lifecycle owner)",
-            "domain IN (SELECT domain FROM findings WHERE kind = 'software' AND sentence LIKE '%end-of-life%')"),
+            "domain IN (SELECT domain FROM findings WHERE kind = 'eol_os' "
+            "OR (kind = 'software' AND sentence LIKE '%end-of-life%'))"),
     "certs": ("Expired or soon-expiring certificates", "Web / platform owner or IT operations",
               "domain IN (SELECT domain FROM findings WHERE kind IN ('cert_expired', 'marker_cert_expiring'))"),
     "appliances": ("Edge appliances (Fortinet, SonicWall, Citrix, ...)",

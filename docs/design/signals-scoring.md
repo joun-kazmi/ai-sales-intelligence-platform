@@ -33,7 +33,10 @@ owner, often the hoster, and produced most ISP false positives (DATA_NOTES 4b).
   name.
 
 **Attribution label shown in the app:** High = direct via scan hostname or cert CN; Medium =
-direct via `http.host` or PTR; Low = via-IP. C1 (section 4) measures each label.
+direct via `http.host` or PTR; Low = via-IP. An account shows the strongest label among the
+records behind its point-bearing findings (all records if it has no points), and a software
+finding cites a record that carries its awarded CVE or end-of-life tag (D63). Via-IP is blocked on
+any IP with a CDN or cloud / hosting record. C1 (section 4) measures each label.
 
 **Domain-complete dev sample (D8, D43).** Built in three steps, by `salesintel-sample`:
 1. Build the **full IP -> candidate-domain index** from the full file's feature layer (every
