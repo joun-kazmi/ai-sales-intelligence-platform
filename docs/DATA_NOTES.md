@@ -391,7 +391,8 @@ findings counted in the review measurement). End-of-life play, default view, ran
 
 **`data-v3` published [M]** (owner, 2026-10-29): private release `data-v3` (asset `artifact.duckdb`,
 46,149,632 bytes, target `8674712`, sha256 `328b7e6e4d7b53d64d31a986b17ffc707534e518bc3524e52a4123f0bc2facf2`).
-Render's switch from `data-v2` to `data-v3` is pending on the owner's side at the time of writing.
+Render's `ARTIFACT_TAG` switched from `data-v2` to `data-v3` and redeployed; live site confirmed on config
+`bcc796098f9c` (owner, 2026-10-29).
 
 **C2 run 1 fixed-denominator figures [M]** (human, `c2_result_human.json`): highest CVSS 19 yes / 0
 no / 1 unknown -> 19/20 = 0.95; ours 16 / 3 / 1 -> 16/20 = 0.80; random 4 / 15 / 1 -> 4/20 = 0.20.
