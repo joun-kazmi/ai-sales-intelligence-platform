@@ -369,8 +369,34 @@ point came from via-IP links (1 in Tier 1, 8 in Tier 2), and no ranked account w
 findings on 4 accounts were via-IP on IPs with cloud records. Effect of the fix on the
 domain-complete sample (sandbox, config `bcc796098f9c` vs `6bacfc84480b`): scores, tiers and
 finding counts identical (37,831 accounts, 42,002 findings); 7 software findings now cite another
-record; ranked labels High 10,662 -> 10,556, Medium 4,037 -> 4,134, Low 0 -> 9. Full-file rescore
-(`data-v3`) to follow.
+record; ranked labels High 10,662 -> 10,556, Medium 4,037 -> 4,134, Low 0 -> 9.
+
+**Full-file score with D63 = `data-v3` [M]** (owner's machine, `main` `8674712`, config
+`bcc796098f9c`, scorer 2, same feature layer): **76 s wall, peak 2.8 GB**, artifact 46,149,632
+bytes. 349,520 accounts (unchanged), 485,956 findings (v2: 485,959).
+
+| Tier | All, v2 | All, v3 | Default view, v2 | Default view, v3 |
+|---|---|---|---|---|
+| 1 | 1,666 | 1,666 | 964 | 964 |
+| 2 | 7,493 | 7,491 | 6,165 | 6,164 |
+| 3 | 168,437 | 168,439 | 162,111 | 162,112 |
+| not ranked | 171,924 | 171,924 | 167,301 | 167,301 |
+
+v2 -> v3: 3 accounts changed score, 2 moved Tier 2 -> Tier 3, nothing else moved; default-view
+top-20 overlap 20/20. Software findings citing a different ip:port: 160. Attribution labels on
+ranked accounts: High 101,335 / Medium 75,949 / Low 312 (v2: 103,577 / 74,019 / 0). Via-IP
+findings 4,526 (v2: 4,548; 22 removed by the IP-level cloud block, against 6 point-relevant
+findings counted in the review measurement). End-of-life play, default view, ranked accounts:
+37,749.
+
+**`data-v3` published [M]** (owner, 2026-10-29): private release `data-v3` (asset `artifact.duckdb`,
+46,149,632 bytes, target `8674712`, sha256 `328b7e6e4d7b53d64d31a986b17ffc707534e518bc3524e52a4123f0bc2facf2`).
+Render's switch from `data-v2` to `data-v3` is pending on the owner's side at the time of writing.
+
+**C2 run 1 fixed-denominator figures [M]** (human, `c2_result_human.json`): highest CVSS 19 yes / 0
+no / 1 unknown -> 19/20 = 0.95; ours 16 / 3 / 1 -> 16/20 = 0.80; random 4 / 15 / 1 -> 4/20 = 0.20.
+The run-1 precision recorded above (1.00 / 0.84 / 0.21) is known-only (unknown left out of the
+denominator).
 
 **UI on the full artifact [M]** (`data-v1`, owner's machine): page times 15-179 ms (slowest
 `/plays`, which counts five plays); CSV export of the default view 169,285 rows / 34 MB / 2.0 s,

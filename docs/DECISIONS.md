@@ -636,6 +636,10 @@ One entry per decision: decision, options considered, why, date.
   accounts showed High while every point came from via-IP (no ranked account was ever Low); 6
   findings / 4 accounts got via-IP on an IP with cloud records, against the stated rule. Evidence
   must be true (D6). C2 stays as measured on the frozen ranking.
+- **Result** [M]: published as `data-v3` (target `8674712`). Full file: 3 accounts changed score,
+  2 moved Tier 2 -> Tier 3, default-view top-20 overlap 20/20; 160 software findings cite a
+  different ip:port; ranked labels High 101,335 / Medium 75,949 / Low 312; via-IP findings
+  4,548 -> 4,526 (DATA_NOTES 5c).
 - **Not fixing**: the `exposure_guard` "apache" substring, 0 affected exposure records in the full
   data [M]; extract batches bounded by record count rather than bytes, theoretical, the full run
   peaked at ~0.5 GB [M].

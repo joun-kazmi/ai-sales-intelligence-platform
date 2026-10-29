@@ -100,7 +100,7 @@ flowchart LR
 - Snapshot dates, input file and scoring config version on every page. All record text is escaped;
   no banner HTML is ever rendered.
 
-On the live `data-v2` artifact [M]: 349,520 accounts; default view Tier 1 964, Tier 2 6,165. Page
+On the live `data-v3` artifact [M]: 349,520 accounts; default view Tier 1 964, Tier 2 6,164. Page
 times 34-156 ms on the full artifact, CSV export of the default view (34 MB) in 1.6 s; server
 memory ~230 MB after an export (measured on `data-v1`) with the DuckDB connection capped at
 256 MiB (D56), under Render's 512 MB.
@@ -118,7 +118,7 @@ The full log with options and reasons is `docs/DECISIONS.md`. The ones that matt
 | D8, D43 | Develop on a **domain-complete** sample (stable-hash 5% of domains, every record of their IPs, the IP's full domain count carried) | A line sample splits accounts; carried counts keep shared IPs shared |
 | D28, D37, D50 | Tune once on the sample, **freeze weights before labelling**, then evaluate | Labels taken after tuning measure the tuning |
 | D20 | The artifact is never in git; private release asset, downloaded at startup with a read-only token | It is a list of vulnerable organisations (NFR5) |
-| D51, D56 | Bounded memory: scoring streams from Parquet with a 6 GB DuckDB limit; app connection capped at 256 MiB | Full-file scoring peaked at 13.5 GB before, 2.7 GB after [M] |
+| D51, D56 | Bounded memory: scoring streams from Parquet with a 6 GB DuckDB limit; app connection capped at 256 MiB | Full-file scoring peaked at 13.5 GB before, 2.7-2.8 GB after [M] |
 | D55 | Count an exposure only when the answering product is not a generic SSH / FTP / HTTP server, applied **after** C2 as a new config version | The module names the probe, not always the service that answered |
 
 ## 4. How we measured whether it works
@@ -156,11 +156,11 @@ evidence? (`worth_a_call`). Our top 20 and the highest-CVSS top 20 share **no** 
 
 **Run 1, human rater, evidence v1** [M]:
 
-| Ranking | known-only precision@20 | Wilson 95% |
-|---|---|---|
-| Highest CVSS first | 1.00 | 0.83-1.00 |
-| Ours | 0.84 | 0.62-0.95 |
-| Random | 0.21 | 0.09-0.43 |
+| Ranking | known-only precision@20 | Wilson 95% | yes / no / unknown | fixed denominator (yes / 20) |
+|---|---|---|---|---|
+| Highest CVSS first | 1.00 | 0.83-1.00 | 19 / 0 / 1 | 19/20 = 0.95 |
+| Ours | 0.84 | 0.62-0.95 | 16 / 3 / 1 | 16/20 = 0.80 |
+| Random | 0.21 | 0.09-0.43 | 4 / 15 / 1 | 4/20 = 0.20 |
 
 **Its flaw, found after labelling:** the sheet showed each account's first 12 records ordered by
 IP. Our 4 no / unknown accounts have 34-1,488 IPs, and in all 4 the records that earned the score
@@ -222,9 +222,30 @@ that ran, not always the service that answered. Fixed only **after** C2, as a ne
   false ones. Highest CVSS 0/20, random 0/20.
 - Whole artifact: 135 of 9,899 exposed-service findings were another service (1.4%): OpenSSH 62,
   nginx 45, Ncat proxy 20, others 8.
-- Rescored as `data-v2` (now live): Tier 1 1,691 -> 1,666 and Tier 2 7,535 -> 7,493 over all
+- Rescored as `data-v2`: Tier 1 1,691 -> 1,666 and Tier 2 7,535 -> 7,493 over all
   accounts; 19 accounts moved Tier 1 -> 3, 6 Tier 1 -> 2, 8 Tier 2 -> 3, 40 Tier 2 -> not ranked;
   none moved up. Default view Tier 1 982 -> 964; default-view top-20 overlap 19/20.
+
+### D63: review fixes to evidence and labels
+Two external reviews found four defects, each verified and measured on `data-v2` before fixing
+(config `bcc796098f9c`, weights unchanged, published as `data-v3`) [M]:
+
+- **Evidence pointed at the wrong record.** A software finding cited the first record of its
+  product + version group, even when the awarded CVE was seen on another one: 109 findings cited a
+  CVE absent at the cited ip:port (62 of them known-exploited). It now cites a record carrying the
+  CVE (or the end-of-life tag); 160 software findings changed their cited ip:port.
+- **The end-of-life play missed end-of-life operating systems**: 449 default-eligible ranked
+  accounts. Fixed in the app; the play now holds 37,749 default-view ranked accounts.
+- **The confidence label overstated links.** It took the best link over all records, including
+  ones that earned no points: 260 ranked accounts showed High while every point came from via-IP.
+  It now comes from the records behind the points. Ranked accounts: High 103,577 -> 101,335, Medium
+  74,019 -> 75,949, Low 0 -> 312.
+- **Via-IP on mixed infrastructure.** A nameless record could get a via-IP link on an IP whose other
+  records were cloud-tagged. Now blocked per IP: via-IP findings 4,548 -> 4,526.
+
+Effect on the ranking is small: 485,959 -> 485,956 findings, 3 accounts changed score, 2 moved
+Tier 2 -> Tier 3, nothing else moved; default view Tier 1 964 (unchanged), Tier 2 6,165 -> 6,164;
+default-view top-20 overlap 20/20.
 
 ## 5. Scale story
 The brief says hundreds to thousands of files like this arrive every month. Measured on one file
@@ -233,7 +254,7 @@ on the owner's 8-core machine [M]:
 | Step | Wall time | Peak memory | Output |
 |---|---|---|---|
 | Extract (7 workers) | 9 min 07 s (~26.7k records/s) | ~0.5 GB | feature layer 1.03 GB (0.84% of raw) |
-| Score (full feature layer) | 1 min 22 s | 2.7 GB | artifact 45.9 MB |
+| Score (full feature layer) | 1 min 16 s | 2.8 GB | artifact 46.1 MB |
 | App on the artifact | 34-156 ms per page | ~230 MB | |
 
 What that implies [H, arithmetic on the measured figures]: extraction is the cost, ~9 minutes of
@@ -329,4 +350,4 @@ APP_USERNAME=demo APP_PASSWORD=demo ARTIFACT_PATH=out/full/artifact.duckdb \
 `uv run python scripts/demo_artifact.py` builds the synthetic artifact used for the screenshots.
 Deployment: `render.yaml` and `Dockerfile`; on Render the app downloads the artifact named by
 `ARTIFACT_REPO` / `ARTIFACT_TAG` / `ARTIFACT_NAME` with a read-only `GITHUB_TOKEN` (currently
-`data-v2`).
+`data-v3`).
